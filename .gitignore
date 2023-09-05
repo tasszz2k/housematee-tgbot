@@ -1,0 +1,63 @@
+# Binaries for programs and plugins
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test binary, build with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Project-local glide cache, RE: https://github.com/Masterminds/glide/issues/736
+.glide/
+
+# Local idea
+.idea/
+
+# VSCode idea
+.vscode/
+
+# React cache
+.cache/
+
+# Dist
+dist/
+
+# Node modules
+node_modules/
+
+node_modules
+
+gopath_export
+config_local
+
+topaz/web/tet2019/scripts/input/*
+topaz/web/tet2019/scripts/output/*
+topaz/web/tet2019/scripts/__pycache__/*
+
+coverage
+output
+
+.vendor-new/
+
+# MacOS
+.DS_Store
+
+package-lock.json
+
+# Python
+venv/
+
+# unitttest report for gitlab-ci
+test-result
+
+MailHogdir
+local.exemple.yaml
+
+# binary file for debugging vscode
+__debug_bin
+
+# local
+config/local.yaml
