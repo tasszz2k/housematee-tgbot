@@ -70,7 +70,7 @@ housematee-tgbot/
 │   │   ├── gsheets.go
 │   │   └── gsheets_helper.go
 │   └── utilities/
-│       └── utilities.go[README.md](README.md)
+│       └── utilities.go
 │
 ├── cmd/
 │   └── main.go
@@ -122,7 +122,7 @@ housematee-tgbot/
 
 - [ ] Greet user
 
-**Command: `/bill` handler**
+**Command: `/splitbill` handler**
 
 - [ ] show the list of buttons for bill management: `add`, `view`, `update`, `delete`, `report`
     - [ ] handle `add` button:
@@ -223,7 +223,7 @@ housematee-tgbot/
       ```
     - show buttons: `select main sheet`, `back` (optional)
 - [ ] handle `create` button:
-    - create new sheet with name: `Housematee - <current month>/<current year>`
+    - create a new sheet with name: `Housematee - <current month>/<current year>`
     - add new record to Google Sheets
     - reply to user:
         ```
