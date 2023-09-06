@@ -61,9 +61,10 @@ housematee-tgbot/
 │   │   ├── gsheets.go
 │   │   └── gsheets_helper.go
 │   └── utilities/
-│       └── utilities.go
+│       └── utilities.go[README.md](README.md)
 │
-├── main.go
+├── cmd/
+│   └── main.go
 │
 └── README.md
 
