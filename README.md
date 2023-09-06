@@ -32,51 +32,60 @@ housematee-tgbot/
 │   ├── config.go
 │   └── config.sample.json
 │
-├── bot/
-│   ├── handlers/
-│   │   ├── commands/
-│   │   │   ├── splitbill.go
-│   │   │   ├── housework.go
-│   │   │   ├── settings.go
-│   │   │   └── start.go
-│   │   ├── callback_queries/
-│   │   └── conversations/
-│   │
-│   ├── helpers/
-│   │   ├── message.go
-│   │   ├── google_sheets.go
-│   │   └── ...
-│   │
-│   └── main.go
+├── commands/
+│   ├── splitbill/
+│   │   ├── splitbill.go
+│   ├── housework/
+│   │   ├── housework.go
+│   ├── settings/
+│   │   ├── settings.go
+│   └── start.go
+│
+├── handlers/
+│   ├── splitbill_handler.go
+│   ├── housework_handler.go
+│   ├── settings_handler.go
+│   └── start_handler.go
 │
 ├── models/
-│   ├── bill.go
-│   ├── housework.go
+│   ├── bill/
+│   │   ├── bill.go
+│   │   └── bill_helper.go
+│   ├── housework/
+│   │   ├── housework.go
+│   │   └── housework_helper.go
 │   └── user.go
 │
-├── storage/
-│   ├── in_memory.go
-│   └── google_sheets.go
+├── services/
+│   ├── gsheets/
+│   │   ├── gsheets.go
+│   │   └── gsheets_helper.go
+│   └── utilities/
+│       └── utilities.go
+│
+├── main.go
 │
 └── README.md
+
 ```
 
 ### Explanation:
 
-#### 1. bot/: This directory contains all the Telegram bot-specific code.
+1. commands/:
+    - This directory now has sub-directories for each major feature like splitbill, housework, etc. Each
+      sub-directory contains the main go file and a _helper.go file for helper functions related to that command.
 
-- handlers/: This is where we'll define our message handlers.
-    - commands/: Each command has its file. It makes it easier to maintain and update specific commands.
-    - callback_queries/: Handlers for inline keyboard button presses.
-    - conversations/: Handlers for multistep interactions.
-- helpers/: Helper functions that are used throughout the bot (e.g., formatting messages, Google Sheets interactions).
+2. models/:
+    - Similar to commands/, it now has sub-directories for each major data model like bill and housework. Each
+      sub-directory contains the main go file and a _helper.go file for helper functions.
 
-#### 2. models/: Structs representing data models (e.g., bill, housework, user).
+3. services/:
+    - This is a new directory aimed at hosting services that can be used across the application. For example,
+      Google Sheets API logic can go under gsheets/.
 
-#### 3. storage/: Logic related to data storage.
-
-- in_memory.go: For caching or storing temporary data.
-- google_sheets.go: Interactions with Google Sheets.
+4. utilities/:
+    - This sub-directory under services/ can contain utility functions that can be used throughout the
+      application.
 
 ## TODO List
 
