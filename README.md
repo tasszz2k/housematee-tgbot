@@ -32,28 +32,51 @@ housematee-tgbot/
 │   ├── config.go
 │   └── config.sample.json
 │
-├── commands/
-│   ├── bill.go
-│   ├── housework.go
-│   ├── settings.go
-│   └── start.go
-│
-├── handlers/
-│   ├── bill_handler.go
-│   ├── housework_handler.go
-│   ├── settings_handler.go
-│   └── start_handler.go
+├── bot/
+│   ├── handlers/
+│   │   ├── commands/
+│   │   │   ├── splitbill.go
+│   │   │   ├── housework.go
+│   │   │   ├── settings.go
+│   │   │   └── start.go
+│   │   ├── callback_queries/
+│   │   └── conversations/
+│   │
+│   ├── helpers/
+│   │   ├── message.go
+│   │   ├── google_sheets.go
+│   │   └── ...
+│   │
+│   └── main.go
 │
 ├── models/
 │   ├── bill.go
 │   ├── housework.go
 │   └── user.go
 │
-├── main.go
+├── storage/
+│   ├── in_memory.go
+│   └── google_sheets.go
 │
 └── README.md
-
 ```
+
+### Explanation:
+
+#### 1. bot/: This directory contains all the Telegram bot-specific code.
+
+- handlers/: This is where we'll define our message handlers.
+    - commands/: Each command has its file. It makes it easier to maintain and update specific commands.
+    - callback_queries/: Handlers for inline keyboard button presses.
+    - conversations/: Handlers for multistep interactions.
+- helpers/: Helper functions that are used throughout the bot (e.g., formatting messages, Google Sheets interactions).
+
+#### 2. models/: Structs representing data models (e.g., bill, housework, user).
+
+#### 3. storage/: Logic related to data storage.
+
+- in_memory.go: For caching or storing temporary data.
+- google_sheets.go: Interactions with Google Sheets.
 
 ## TODO List
 
@@ -181,21 +204,22 @@ housematee-tgbot/
       ```
     - show buttons: `select main sheet`, `back` (optional)
 - [ ] handle `create` button:
-  - create new sheet with name: `Housematee - <current month>/<current year>`
-  - add new record to Google Sheets
-  - reply to user:
-      ```
-          Status: <status>
-          --- <show data as a row of table> ---
-          ID: <id> 
-          Sheet name: <name>
-          Sheet ID: <sheet id>
-      ```
+    - create new sheet with name: `Housematee - <current month>/<current year>`
+    - add new record to Google Sheets
+    - reply to user:
+        ```
+            Status: <status>
+            --- <show data as a row of table> ---
+            ID: <id> 
+            Sheet name: <name>
+            Sheet ID: <sheet id>
+        ```
 - [ ] handle `select main sheet` button:
 
 **Command: `/help` handler**
-- [ ] show the list of buttons for help: `/hello`, `gsheets`, `/splitbill`, `/housework`, `/settings`, `/feedback`, `/help`, ...
 
+- [ ] show the list of buttons for
+  help: `/hello`, `gsheets`, `/splitbill`, `/housework`, `/settings`, `/feedback`, `/help`, ...
 
 ## Contributing
 
