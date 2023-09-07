@@ -2,7 +2,13 @@ title: housematee-tgbot
 production: false
 
 telegram:
-  apiToken: { { housematee-tgbot.telegram.apiToken }
+  api_token: {{housematee-tgbot.telegram.api_token}}}
 
-googleApis:
-  apiKey: { { housematee-tgbot.googleApis.apiKey } }
+google_apis:
+  credentials:
+    client_email: {{housematee-tgbot.google_apis.credentials.client_email}}}
+    private_key: {{housematee-tgbot.google_apis.credentials.private_key}}}
+    token_uri: {{housematee-tgbot.google_apis.credentials.token_uri}}}
+
+google_sheets:
+  spreadsheet_id: {{housematee-tgbot.google_sheets.spreadsheet_id}}}

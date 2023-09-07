@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers/conversation"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers/filters/callbackquery"
 	"housematee-tgbot/commands"
 	"housematee-tgbot/config"
 	"housematee-tgbot/enum"
+	services "housematee-tgbot/services/gsheets"
 	"log"
 	"time"
 
@@ -17,6 +19,11 @@ import (
 func main() {
 	// Load configuration
 	config.Load()
+	// init service
+	_, err := services.InitGSheetsSvc(context.TODO(), config.GetAppConfig().GoogleApis.Credentials)
+	if err != nil {
+		panic("failed to init google sheets service: " + err.Error())
+	}
 
 	initTelegramBot()
 }

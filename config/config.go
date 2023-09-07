@@ -10,15 +10,34 @@ import (
 )
 
 type AppConfig struct {
-	Telegram   Telegram   `mapstructure:"telegram" validate:"required"`
-	GoogleApis GoogleApis `mapstructure:"googleApis" validate:"required"`
+	Telegram     Telegram     `mapstructure:"telegram" validate:"required"`
+	GoogleApis   GoogleApis   `mapstructure:"google_apis" validate:"required"`
+	GoogleSheets GoogleSheets `mapstructure:"google_sheets" validate:"required"`
 }
 
 type Telegram struct {
-	ApiToken string `mapstructure:"apiToken" validate:"required"`
+	ApiToken string `mapstructure:"api_token" validate:"required"`
 }
 
 type GoogleApis struct {
+	Credentials Credentials `mapstructure:"credentials" validate:"required"`
+}
+
+type Credentials struct {
+	Type                string `mapstructure:"type"`
+	ProjectID           string `mapstructure:"project_id"`
+	PrivateKeyID        string `mapstructure:"private_key_id"`
+	PrivateKey          string `mapstructure:"private_key"`
+	ClientEmail         string `mapstructure:"client_email"`
+	ClientID            string `mapstructure:"client_id"`
+	AuthURI             string `mapstructure:"auth_uri"`
+	TokenURI            string `mapstructure:"token_uri"`
+	AuthProviderCertURL string `mapstructure:"auth_provider_x509_cert_url"`
+	ClientCertURL       string `mapstructure:"client_x509_cert_url"`
+}
+
+type GoogleSheets struct {
+	SpreadsheetId string `mapstructure:"spreadsheet_id" validate:"required"`
 }
 
 var (
