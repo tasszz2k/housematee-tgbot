@@ -4,9 +4,9 @@ import (
 	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers/conversation"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers/filters/callbackquery"
 	"housematee-tgbot/commands"
+	"housematee-tgbot/config"
 	"housematee-tgbot/enum"
 	"log"
-	"os"
 	"time"
 
 	"github.com/PaulSonOfLars/gotgbot/v2"
@@ -15,12 +15,15 @@ import (
 )
 
 func main() {
+	// Load configuration
+	config.Load()
+
 	initTelegramBot()
 }
 
 func initTelegramBot() {
 	// Get token from the environment variable
-	token := os.Getenv("TOKEN")
+	token := config.GetAppConfig().Telegram.ApiToken
 	if token == "" {
 		panic("TOKEN environment variable is empty")
 	}

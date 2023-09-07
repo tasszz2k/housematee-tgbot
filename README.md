@@ -154,7 +154,7 @@ housematee-tgbot/
             ```
         - show buttons: `next`, `previous`, `back` (optional)
     - [ ] handle `report` button:
-        - show report as table
+        - show a report as table
           ```markdown
             |                               | Amount    | ***        |
             |:------------------------------|:----------|:-----------|

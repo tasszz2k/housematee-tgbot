@@ -1,0 +1,8 @@
+title: housematee-tgbot
+production: false
+
+telegram:
+  apiToken: { { housematee-tgbot.telegram.apiToken }
+
+googleApis:
+  apiKey: { { housematee-tgbot.googleApis.apiKey } }
