@@ -1,8 +1,11 @@
 package config
 
 import (
+	"bytes"
+	"encoding/base64"
 	"github.com/go-playground/validator/v10"
 	"github.com/spf13/viper"
+	"log"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -42,7 +45,7 @@ type GoogleSheets struct {
 
 var (
 	_, b, _, _        = runtime.Caller(0)
-	basePath          = filepath.Dir(b) //get absolute directory of the current file
+	basePath          = filepath.Dir(b) //get the absolute directory of the current file
 	defaultConfigFile = basePath + "/local.yaml"
 	v                 = viper.New()
 	appConfig         AppConfig
@@ -53,13 +56,19 @@ func init() {
 }
 
 func Load() {
-	var configFile string
-	if configFile = os.Getenv("CONFIG_PATH"); len(configFile) == 0 {
-		configFile = defaultConfigFile
-	}
+	configReaderMode := os.Getenv("CONFIG_READER_MODE")
 
-	if err := loadConfigFile(configFile); err != nil {
-		panic(err)
+	switch configReaderMode {
+	case "file":
+		if err := loadConfigFromFile(); err != nil {
+			panic(err)
+		}
+	case "secret":
+		if err := loadConfigFromSecret(); err != nil {
+			panic(err)
+		}
+	default:
+		panic("Invalid CONFIG_READER_MODE. Please use 'file' or 'secret'.")
 	}
 
 	if err := scanConfigFile(&appConfig); err != nil {
@@ -69,18 +78,38 @@ func Load() {
 	if err := validateConfig(&appConfig); err != nil {
 		panic(err)
 	}
-
 }
 
-func loadConfigFile(configFile string) error {
-	configFileName := filepath.Base(configFile)
-	configFilePath := filepath.Dir(configFile)
+func loadConfigFromFile() error {
+	var configFile string
+	if configFile = os.Getenv("CONFIG_PATH"); len(configFile) == 0 {
+		configFile = defaultConfigFile
+	}
 
-	v.AddConfigPath(configFilePath)
-	v.SetConfigName(strings.TrimSuffix(configFileName, filepath.Ext(configFileName)))
+	v.AddConfigPath(filepath.Dir(configFile))
+	v.SetConfigName(strings.TrimSuffix(filepath.Base(configFile), filepath.Ext(configFile)))
 	v.AutomaticEnv()
 
 	return v.ReadInConfig()
+}
+
+func loadConfigFromSecret() error {
+	encodedConfig := os.Getenv("CONFIG_SECRET")
+	if encodedConfig == "" {
+		log.Fatal("CONFIG_SECRET is empty")
+	}
+
+	decodedConfig, err := base64.StdEncoding.DecodeString(encodedConfig)
+	if err != nil {
+		return err
+	}
+	v.SetConfigType("yaml")
+	// Use viper to read the decoded YAML content from a buffer
+	if err := v.ReadConfig(bytes.NewBuffer(decodedConfig)); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func scanConfigFile(config any) error {
