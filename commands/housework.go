@@ -30,7 +30,7 @@ func Housework(bot *gotgbot.Bot, ctx *ext.Context) error {
 	}
 
 	// Reply to the user with the available commands as buttons
-	_, err := ctx.EffectiveMessage.Reply(bot, "Select a bill action:", &gotgbot.SendMessageOpts{
+	_, err := ctx.EffectiveMessage.Reply(bot, "Select a housework action:", &gotgbot.SendMessageOpts{
 		ReplyMarkup: inlineKeyboard,
 	})
 	if err != nil {

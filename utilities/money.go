@@ -24,3 +24,14 @@ func ParseAmount(amountStr string) string {
 	}
 	return amountStr
 }
+
+// FormatMoney Format number to money format
+// e.g., 100000 -> 100,000 ₫
+func FormatMoney(amount int) string {
+	amountStr := strconv.FormatUint(uint64(amount), 10)
+	if len(amountStr) <= 3 {
+		return amountStr + " ₫"
+	}
+	amountStr = amountStr[:len(amountStr)-3] + "," + amountStr[len(amountStr)-3:] + " ₫"
+	return amountStr
+}

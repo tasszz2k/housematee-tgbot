@@ -16,6 +16,7 @@ var (
 type IGSheets interface {
 	Get(ctx context.Context, spreadsheetId string, readRange string) (*sheets.ValueRange, error)
 	Update(ctx context.Context, spreadsheetId string, writeRange string, vr *sheets.ValueRange) (*sheets.UpdateValuesResponse, error)
+	GetValue(ctx context.Context, spreadsheetId string, readRange string) (string, error)
 }
 
 type GSheets struct {
@@ -53,6 +54,10 @@ func InitGSheetsSvc(ctx context.Context, credential config.Credentials) (*GSheet
 	return &gSheets, nil
 }
 
+func GetGSheetsSvc() *GSheets {
+	return &gSheets
+}
+
 func (g *GSheets) Get(ctx context.Context, spreadsheetId string, readRange string) (*sheets.ValueRange, error) {
 	return g.Svc.Spreadsheets.Values.Get(spreadsheetId, readRange).Context(ctx).Do()
 }
@@ -61,6 +66,13 @@ func (g *GSheets) Update(ctx context.Context, spreadsheetId string, writeRange s
 	return g.Svc.Spreadsheets.Values.Update(spreadsheetId, writeRange, valueRange).ValueInputOption("RAW").Context(ctx).Do()
 }
 
-func GetGSheetsSvc() GSheets {
-	return gSheets
+func (g *GSheets) GetValue(ctx context.Context, spreadsheetId string, readRange string) (string, error) {
+	resp, err := g.Get(ctx, spreadsheetId, readRange)
+	if err != nil {
+		return "", err
+	}
+	if len(resp.Values) == 0 {
+		return "", nil
+	}
+	return resp.Values[0][0].(string), nil
 }
