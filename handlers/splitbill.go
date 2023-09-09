@@ -123,7 +123,7 @@ func getLast5ExpenseReadRange() (string, error) {
 	currentSheetName, err := svc.GetValue(
 		context.TODO(),
 		spreadsheetId,
-		config.CurrentSheetNameIndex,
+		config.CurrentSheetNameCell,
 	)
 	if err != nil {
 		logrus.Errorf("failed to get current sheet name: %s", err.Error())
@@ -149,7 +149,7 @@ func getLast5ExpenseReadRange() (string, error) {
 	// => return "9/2023!A5:G9"
 
 	lastExpenseId := nextExpenseId - 1
-	lastExpenseRow := config.ExpensesStartRow + lastExpenseId
+	lastExpenseRow := config.ExpenseStartRow + lastExpenseId
 
 	readRangeStartRow := lastExpenseRow - 4 // (-5+1)
 	readRangeEndRow := lastExpenseRow
@@ -161,15 +161,15 @@ func getLast5ExpenseReadRange() (string, error) {
 		// ExpensesStartRow = 3
 		// => return "9/2023!A4:G6"
 
-		readRangeStartRow = config.ExpensesStartRow + 1
+		readRangeStartRow = config.ExpenseStartRow + 1
 	}
 
 	readRange := fmt.Sprintf(
 		"%s!%s%d:%s%d",
 		currentSheetName,
-		config.ExpensesStartCol,
+		config.ExpenseStartCol,
 		readRangeStartRow,
-		config.ExpensesEndCol,
+		config.ExpenseEndCol,
 		readRangeEndRow,
 	)
 	return readRange, nil
@@ -257,15 +257,15 @@ func addNewExpense(expense models.Expense) (*models.Expense, error) {
 	}
 
 	// get next expense row
-	nextExpenseRow := config.ExpensesStartRow + nextExpenseId
+	nextExpenseRow := config.ExpenseStartRow + nextExpenseId
 
 	// get next expense range
 	expenseRange := fmt.Sprintf(
 		"%s!%s%d:%s%d",
 		currentSheetName,
-		config.ExpensesStartCol,
+		config.ExpenseStartCol,
 		nextExpenseRow,
-		config.ExpensesEndCol,
+		config.ExpenseEndCol,
 		nextExpenseRow,
 	)
 
@@ -297,7 +297,8 @@ func addNewExpense(expense models.Expense) (*models.Expense, error) {
 
 	// update next expense id
 	nextExpenseId = nextExpenseId + 1
-	if _, err := svc.Update(context.TODO(), spreadsheetId, config.NextExpenseIdIndex, &sheets.ValueRange{
+	nextExpenseIdCell := config.GetNextExpenseIdCell(currentSheetName)
+	if _, err := svc.Update(context.TODO(), spreadsheetId, nextExpenseIdCell, &sheets.ValueRange{
 		Values: [][]interface{}{
 			{nextExpenseId},
 		},
@@ -331,16 +332,17 @@ func checkValidExpenseInput(name string, amount string, str string, payer string
 
 func getNextExpenseId() (int, error) {
 	// read spreadsheetId from config
-	svc, spreadsheetId, _, err := GetCurrentSheetInfo()
+	svc, spreadsheetId, currentSheetName, err := GetCurrentSheetInfo()
 	if err != nil {
 		return 0, err
 	}
 
 	// get next expense id
+	nextExpenseIdCell := config.GetNextExpenseIdCell(currentSheetName)
 	nextExpenseIdValue, err := svc.GetValue(
 		context.TODO(),
 		spreadsheetId,
-		config.NextExpenseIdIndex,
+		nextExpenseIdCell,
 	)
 	if err != nil {
 		logrus.Errorf("failed to get next expense id: %s", err.Error())
@@ -348,4 +350,223 @@ func getNextExpenseId() (int, error) {
 	}
 	nextExpenseId := cast.ToInt(nextExpenseIdValue)
 	return nextExpenseId, nil
+}
+
+// HandleSplitBillReportAction handles the /splitbill.report command.
+// Sample data format:
+// Report
+// =================================================================
+//
+//	Amount	    Average	     Note
+//
+// Expenses	1,999,500 ₫	999,750 ₫
+// Rent	    5,500,000 ₫	2,750,000 ₫	 @tasszz2k
+// Total	7,499,500 ₫	3,749,750 ₫
+//
+// Balances
+// Username	    Total Paid	 Have to pay  Balance     Final Balance
+// @tasszz2k	1,720,900 ₫	 999,750 ₫	  721,150 ₫	  3,471,150 ₫
+// @ng0cth1nh	278,600 ₫	 999,750 ₫	  -721,150 ₫  -3,471,150 ₫
+// =================================================================
+func HandleSplitBillReportAction(bot *gotgbot.Bot, ctx *ext.Context) error {
+	// Read the spreadsheet data and calculate the report
+	report, err := generateSplitBillReport()
+	if err != nil {
+		return err
+	}
+
+	// Send the report to the user
+	_, err = ctx.EffectiveMessage.Reply(bot, report, &gotgbot.SendMessageOpts{
+		ParseMode: "Markdown",
+	})
+	return err
+}
+
+func generateSplitBillReport() (result string, err error) {
+	// read spreadsheetId from config
+	svc, spreadsheetId, currentSheetName, err := GetCurrentSheetInfo()
+	if err != nil {
+		return "", err
+	}
+
+	report, err := getReport(svc, spreadsheetId, currentSheetName)
+	if err != nil {
+		return "", err
+	}
+
+	balances, err := getBalances(svc, spreadsheetId, currentSheetName)
+	if err != nil {
+		return "", err
+	}
+
+	return renderReportMarkdown(report, balances), nil
+}
+
+func getBalances(svc *services.GSheets, spreadsheetId string, currentSheetName string) (models.Balance, error) {
+	// get balances read range
+	numberOfMembers, err := GetNumberOfMembers(svc, spreadsheetId, currentSheetName)
+	if err != nil {
+		return models.Balance{}, err
+	}
+	balancesReadRange := getBalancesReadRange(currentSheetName, numberOfMembers)
+
+	// get balances data
+	balancesData, err := svc.Get(context.TODO(), spreadsheetId, balancesReadRange)
+	if err != nil {
+		logrus.Errorf("failed to get balances data: %s", err.Error())
+		return models.Balance{}, err
+	}
+
+	// convert balances data to models.Balance
+	balances := convertBalancesDataToBalanceModel(balancesData.Values)
+	return balances, nil
+}
+
+func convertBalancesDataToBalanceModel(values [][]interface{}) (balances models.Balance) {
+	// convert data to [numberOfMembers+1][5] string array
+	balancesArray := make([][5]string, len(values))
+	for i, row := range values {
+		for j, col := range row {
+			balancesArray[i][j] = cast.ToString(col)
+		}
+	}
+
+	balances.Users = make(map[string]models.BalanceData)
+	// skip the first row is header
+	for i := 1; i < len(balancesArray); i++ {
+		username := balancesArray[i][0]
+		balances.Users[username] = models.BalanceData{
+			TotalPaid:    balancesArray[i][1],
+			HaveToPay:    balancesArray[i][2],
+			Balance:      balancesArray[i][3],
+			FinalBalance: balancesArray[i][4],
+		}
+	}
+
+	return balances
+}
+
+func GetNumberOfMembers(svc *services.GSheets, spreadsheetId string, currentSheetName string) (int, error) {
+	// get number of members read range
+	numberOfMembersReadRange := currentSheetName + "!" + config.NumberOfMembersCell
+
+	// get number of members data
+	numberOfMembersValue, err := svc.GetValue(context.TODO(), spreadsheetId, numberOfMembersReadRange)
+	if err != nil {
+		logrus.Errorf("failed to get number of members data: %s", err.Error())
+		return 0, err
+	}
+
+	// convert number of members data to int
+	numberOfMembers := cast.ToInt(numberOfMembersValue)
+	return numberOfMembers, nil
+}
+
+func renderReportMarkdown(report models.Report, balances models.Balance) string {
+	text := "*Report*\n\n"
+	text += "*Expenses*\n"
+	text += "• *Amount*: " + report.Expenses.Amount + "\n"
+	text += "• *Average*: " + report.Expenses.Average + "\n"
+	if report.Expenses.Note != "" {
+		text += "• *Note*: _" + report.Expenses.Note + "_\n\n"
+	}
+	text += "*Rent*\n"
+	if report.Rent.Amount == "" {
+		text += "• *Amount*: _not paid_\n"
+		text += "• *Average*: _not paid_\n"
+	} else {
+		text += "• *Amount*: " + report.Rent.Amount + "\n"
+		text += "• *Average*: " + report.Rent.Average + "\n"
+		if report.Rent.Note != "" {
+			text += "• *Note*: _" + report.Rent.Note + "_\n\n"
+		}
+	}
+	text += "*Total*\n"
+	text += "• *Amount*: " + report.Total.Amount + "\n"
+	text += "• *Average*: " + report.Total.Average + "\n"
+	if report.Total.Note != "" {
+		text += "• *Note*: _" + report.Total.Note + "_\n\n"
+	}
+
+	text += "\n-----\n*Balances*\n\n"
+	//text += "@tasszz2k:\n"
+	//text += "• *Total Paid*: " + report.Balances["@tasszz2k"].TotalPaid + "\n"
+	//text += "• *Have to pay*: " + report.Balances["@tasszz2k"].HaveToPay + "\n"
+	//text += "• *Balance*: " + report.Balances["@tasszz2k"].Balance + "\n"
+	//text += "• *Final Balance*: " + report.Balances["@tasszz2k"].FinalBalance + "\n\n"
+	//
+	//text += "@ng0cth1nh:\n"
+	//text += "• *Total Paid*: " + report.Balances["@ng0cth1nh"].TotalPaid + "\n"
+	//text += "• *Have to pay*: " + report.Balances["@ng0cth1nh"].HaveToPay + "\n"
+	//text += "• *Balance*: " + report.Balances["@ng0cth1nh"].Balance + "\n"
+	//text += "• *Final Balance*: " + report.Balances["@ng0cth1nh"].FinalBalance + "\n"
+
+	balanceMap := balances.Users
+	for username, balance := range balanceMap {
+		text += username + ":\n"
+		text += "• *Total Paid*: " + balance.TotalPaid + "\n"
+		text += "• *Have to pay*: " + balance.HaveToPay + "\n"
+		text += "• *Balance*: " + balance.Balance + "\n"
+		text += "• *Final Balance*: " + balance.FinalBalance + "\n\n"
+	}
+
+	return text
+}
+
+func getReport(svc *services.GSheets, spreadsheetId string, currentSheetName string) (models.Report, error) {
+	// get report read range
+	reportReadRange := getReportReadRange(currentSheetName)
+
+	// get report data
+	reportData, err := svc.Get(context.TODO(), spreadsheetId, reportReadRange)
+	if err != nil {
+		logrus.Errorf("failed to get report data: %s", err.Error())
+		return models.Report{}, err
+	}
+
+	// convert report data to models.Report
+	report := convertReportDataToReportModel(reportData.Values)
+	return report, nil
+}
+
+func convertReportDataToReportModel(data [][]any) models.Report {
+	// convert data to [4][4] string array
+	reportArray := make([][4]string, 4)
+	for i, row := range data {
+		for j, col := range row {
+			reportArray[i][j] = cast.ToString(col)
+		}
+	}
+
+	return models.Report{
+		Expenses: models.ReportData{
+			Amount:  reportArray[1][1],
+			Average: reportArray[1][2],
+			Note:    reportArray[1][3],
+		},
+		Rent: models.ReportData{
+			Amount:  reportArray[2][1],
+			Average: reportArray[2][2],
+			Note:    reportArray[2][3],
+		},
+		Total: models.ReportData{
+			Amount:  reportArray[3][1],
+			Average: reportArray[3][2],
+			Note:    reportArray[3][3],
+		},
+	}
+}
+
+func getReportReadRange(currentSheetName string) string {
+	return fmt.Sprintf("%s!%s:%s", currentSheetName, config.ReportStartCell, config.ReportEndCell)
+}
+
+func getBalancesReadRange(currentSheetName string, numberOfMembers int) string {
+	return fmt.Sprintf(
+		"%s!%s:%s%d",
+		currentSheetName,
+		config.BalanceStartCell,
+		config.BalanceEndCol,
+		config.BalanceStartRow+numberOfMembers,
+	)
 }

@@ -15,7 +15,7 @@ func GetCurrentSheetInfo() (svc *services.GSheets, spreadsheetId string, current
 	currentSheetName, err = svc.GetValue(
 		context.TODO(),
 		spreadsheetId,
-		config.CurrentSheetNameIndex,
+		config.CurrentSheetNameCell,
 	)
 	if err != nil {
 		logrus.Errorf("failed to get current sheet name: %s", err.Error())

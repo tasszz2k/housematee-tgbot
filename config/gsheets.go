@@ -2,11 +2,27 @@ package config
 
 // Indexes of data in Google Sheets
 var (
+	// Database sheet
 	SeperatedSheetDataName = "Database"
-	CurrentSheetNameIndex  = "Database!B2"
-	NextExpenseIdIndex     = "Database!B3"
+	CurrentSheetNameCell   = "Database!B2"
 
-	ExpensesStartRow = 3
-	ExpensesStartCol = "A"
-	ExpensesEndCol   = "G"
+	// Expenses sheet
+	NextExpenseIdCell = "B2" // example: "9/2023!B2"
+	ExpenseStartRow   = 3
+	ExpenseStartCol   = "A"
+	ExpenseEndCol     = "G"
+
+	// Report sheet
+	ReportStartCell  = "I3"
+	ReportEndCell    = "M6"
+	BalanceStartRow  = 9
+	BalanceStartCell = "I9"
+	BalanceEndCol    = "M" // BalanceEndRow = BalanceStartRow + numberOfHousemates
+
+	// Members sheet
+	NumberOfMembersCell = "P2"
 )
+
+func GetNextExpenseIdCell(sheetName string) string {
+	return sheetName + "!" + NextExpenseIdCell
+}

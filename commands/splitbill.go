@@ -83,7 +83,7 @@ func HandleSplitBillActionCallback(bot *gotgbot.Bot, ctx *ext.Context) error {
 		}
 	case "splitbill.report":
 		// Handle the /feedback button click
-		err := Todo(bot, ctx)
+		err := HandleSplitBillReportActionCallback(bot, ctx)
 		if err != nil {
 			return err
 		}
@@ -104,6 +104,10 @@ func HandleSplitBillActionCallback(bot *gotgbot.Bot, ctx *ext.Context) error {
 
 func HandleSplitBillViewActionCallback(bot *gotgbot.Bot, ctx *ext.Context) error {
 	return handlers.HandleSplitBillViewAction(bot, ctx)
+}
+
+func HandleSplitBillReportActionCallback(bot *gotgbot.Bot, ctx *ext.Context) error {
+	return handlers.HandleSplitBillReportAction(bot, ctx)
 }
 
 func StartAddSplitBill(bot *gotgbot.Bot, ctx *ext.Context) error {
