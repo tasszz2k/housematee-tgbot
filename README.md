@@ -23,14 +23,13 @@ git clone https://github.com/your-username/housematee-tgbot.git
 - Start a chat with Housematee bot on Telegram.
 - Use the available commands to manage bills, set reminders, and more.
 - Supported commands:
-  - /hello - A greeting command to initiate interaction with the bot.
-  - /gsheets - Manage and interact with your Google Sheets data directly from the bot.
-  - /splitbill - Easily split expenses with your housemates and keep track of who owes what.
-  - /housework - Organize and delegate house chores among housemates with reminders and schedules.
-  - /settings - Adjust bot settings, such as language, notification preferences, and more.
-  - /feedback - Provide feedback about the bot or report issues for continuous improvement.
-  - /help - Get a list of available commands and learn how to use the bot effectively.
-
+    - /hello - A greeting command to initiate interaction with the bot.
+    - /gsheets - Manage and interact with your Google Sheets data directly from the bot.
+    - /splitbill - Easily split expenses with your housemates and keep track of who owes what.
+    - /housework - Organize and delegate house chores among housemates with reminders and schedules.
+    - /settings - Adjust bot settings, such as language, notification preferences, and more.
+    - /feedback - Provide feedback about the bot or report issues for continuous improvement.
+    - /help - Get a list of available commands and learn how to use the bot effectively.
 
 ## Project structure
 
