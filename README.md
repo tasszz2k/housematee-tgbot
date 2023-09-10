@@ -114,17 +114,17 @@ housematee-tgbot/
 
 **Handle all commands when received**
 
-- [ ] reply to user if command is supported
-- [ ] reply to user if command is not supported
+- [x] reply to user if command is supported
+- [x] reply to user if command is not supported
 
 **Command: `/hello` handler**
 
-- [ ] Greet user
+- [x] Greet user
 
 **Command: `/splitbill` handler**
 
 - [ ] show the list of buttons for bill management: `add`, `view`, `update`, `delete`, `report`
-    - [ ] handle `add` button:
+    - [x] handle `add` button:
         - user input: each on a new line: `name`, `amount`, `date`, `payer`
           ```
           [expense name]: default: name - current date
@@ -143,7 +143,7 @@ housematee-tgbot/
                 Date: <date>
                 Payer: <payer>
             ```
-    - [ ] handle `view` button:
+    - [x] handle `view` button:
         - show last 5 records as table
           ```markdown
                 | ID | Expense name | Amount | Date | Payer |
@@ -152,7 +152,7 @@ housematee-tgbot/
                 | 2  | ...          | ...    | ...  | ...   |
             ```
         - show buttons: `next`, `previous`, `back` (optional)
-    - [ ] handle `report` button:
+    - [x] handle `report` button:
         - show a report as table
           ```markdown
             |                               | Amount    | ***        |
@@ -236,7 +236,7 @@ housematee-tgbot/
 
 **Command: `/help` handler**
 
-- [ ] show the list of buttons for
+- [x] show the list of buttons for
   help: `/hello`, `gsheets`, `/splitbill`, `/housework`, `/settings`, `/feedback`, `/help`, ...
 
 ## Contributing
