@@ -227,7 +227,7 @@ func HandleExpenseAddAction(bot *gotgbot.Bot, ctx *ext.Context) (err error) {
 
 	var newExpense *models.Expense
 	// Add new record to Google Sheets and get the ID
-	isRentExpense := strings.ToLower(expense.Name) == config.ExpenseNameRent
+	isRentExpense := strings.ToLower(strings.TrimSpace(expenseName)) == config.ExpenseNameRent
 	if isRentExpense {
 		// add to rent range. example: "9/2023!J5:L5"
 		newExpense, err = upsertRentExpense(expense)
