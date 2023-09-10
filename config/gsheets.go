@@ -12,6 +12,8 @@ var (
 	ExpenseStartCol   = "A"
 	ExpenseEndCol     = "G"
 
+	ExpenseRentReadRange = "J5:L5"
+
 	// Report sheet
 	ReportStartCell  = "I3"
 	ReportEndCell    = "M6"
@@ -21,6 +23,10 @@ var (
 
 	// Members sheet
 	NumberOfMembersCell = "P2"
+)
+
+const (
+	ExpenseNameRent = "rent"
 )
 
 func GetNextExpenseIdCell(sheetName string) string {

@@ -178,7 +178,7 @@ func getLast5ExpenseReadRange() (string, error) {
 // HandleExpenseAddAction handles the /splitbill.add command.
 // Get the expense details from the user and add a new record to Google Sheets.
 // Update next expense ID in Google Sheets.
-func HandleExpenseAddAction(bot *gotgbot.Bot, ctx *ext.Context) error {
+func HandleExpenseAddAction(bot *gotgbot.Bot, ctx *ext.Context) (err error) {
 	// Parse the user's message and extract the details
 	input := strings.Split(ctx.EffectiveMessage.Text, "\n")
 
@@ -225,11 +225,22 @@ func HandleExpenseAddAction(bot *gotgbot.Bot, ctx *ext.Context) error {
 		Note:         "added from telegram bot",
 	}
 
-	// TODO: Add new record to Google Sheets and get the ID
-	newExpense, err := addNewExpense(expense)
-	if err != nil {
-		_, err := ctx.EffectiveMessage.Reply(bot, err.Error(), nil)
-		return err
+	var newExpense *models.Expense
+	// Add new record to Google Sheets and get the ID
+	isRentExpense := strings.ToLower(expense.Name) == config.ExpenseNameRent
+	if isRentExpense {
+		// add to rent range. example: "9/2023!J5:L5"
+		newExpense, err = upsertRentExpense(expense)
+		if err != nil {
+			_, err := ctx.EffectiveMessage.Reply(bot, err.Error(), nil)
+			return err
+		}
+	} else {
+		newExpense, err = addNewExpense(expense)
+		if err != nil {
+			_, err := ctx.EffectiveMessage.Reply(bot, err.Error(), nil)
+			return err
+		}
 	}
 
 	// Reply to user with the details
@@ -241,6 +252,50 @@ func HandleExpenseAddAction(bot *gotgbot.Bot, ctx *ext.Context) error {
 		return err
 	}
 	return tgBotHandler.EndConversation()
+}
+
+func upsertRentExpense(expense models.Expense) (*models.Expense, error) {
+	// read spreadsheetId from config
+	svc, spreadsheetId, currentSheetName, err := GetCurrentSheetInfo()
+	if err != nil {
+		return nil, err
+	}
+
+	// get number of members
+	numberOfMembers, err := GetNumberOfMembers(svc, spreadsheetId, currentSheetName)
+
+	// get rent range
+	rentRange := currentSheetName + "!" + config.ExpenseRentReadRange
+	amount := cast.ToInt(expense.Amount)
+	average := amount / numberOfMembers
+	rentValues := [][]interface{}{
+		{
+			amount,
+			average,
+			expense.Payer,
+		},
+	}
+
+	// write rent to Google Sheets
+	_, err = svc.Update(context.TODO(), spreadsheetId, rentRange, &sheets.ValueRange{
+		Values: rentValues,
+	})
+	if err != nil {
+		logrus.Errorf("failed to update rent: %s", err.Error())
+		return nil, err
+	}
+
+	// update rent expense value
+	rentNote := "Average: " + utilities.FormatMoney(average)
+	return &models.Expense{
+		ID:           0,
+		Name:         expense.Name,
+		Amount:       utilities.FormatMoney(cast.ToInt(expense.Amount)),
+		Date:         expense.Date,
+		Payer:        expense.Payer,
+		Participants: expense.Participants,
+		Note:         rentNote,
+	}, nil
 }
 
 func addNewExpense(expense models.Expense) (*models.Expense, error) {
