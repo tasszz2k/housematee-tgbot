@@ -3,8 +3,8 @@ package config
 // Indexes of data in Google Sheets
 var (
 	// Database sheet
-	SeperatedSheetDataName = "Database"
-	CurrentSheetNameCell   = "Database!B2"
+	SeperatedSheetDatabaseName = "Database"
+	CurrentSheetNameCell       = "Database!B2"
 
 	// Expenses sheet
 	NextExpenseIdCell = "B2" // example: "9/2023!B2"
@@ -23,6 +23,14 @@ var (
 
 	// Members sheet
 	NumberOfMembersCell = "P2"
+
+	// Tasks sheet
+	SeparatedSheetTasksName = "Tasks"
+	TaskStartRow            = 2
+	TaskStartCol            = "A"
+	TaskEndCol              = "H"
+	NumberOfTasksCell       = "B1"
+	NumberOfTasksReadRange  = "Tasks!B1"
 )
 
 const (

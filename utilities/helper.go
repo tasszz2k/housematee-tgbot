@@ -24,3 +24,29 @@ func DateToGoogleDate(t time.Time) date.Date {
 		Day:   int32(t.Day()),
 	}
 }
+
+func IsDateDueOrOverdue(dateStr string) (bool, error) {
+	// Load the Asia/Bangkok time zone (GMT+7)
+	loc, err := time.LoadLocation("Asia/Bangkok")
+	if err != nil {
+		return false, err
+	}
+
+	// Parse the date string with the specified time zone
+	t, err := time.ParseInLocation("02/01/2006", dateStr, loc)
+	if err != nil {
+		return false, err
+	}
+
+	// Get the current date in the same time zone
+	currentDate := time.Now().In(loc)
+
+	// Compare the parsed date with the current date
+	if t.Before(currentDate) || t.Equal(currentDate) {
+		// The date is due or overdue
+		return true, nil
+	}
+
+	// The date is in the future
+	return false, nil
+}

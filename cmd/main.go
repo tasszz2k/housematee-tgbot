@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers/conversation"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers/filters/callbackquery"
+	"github.com/robfig/cron/v3"
 	"housematee-tgbot/commands"
 	"housematee-tgbot/config"
 	"housematee-tgbot/enum"
@@ -13,7 +14,7 @@ import (
 
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext"
-	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers"
+	botHandlers "github.com/PaulSonOfLars/gotgbot/v2/ext/handlers"
 )
 
 func main() {
@@ -72,6 +73,9 @@ func initTelegramBot() {
 	}
 	log.Printf("%s has been started...\n", bot.User.Username)
 
+	// register cron job to notify due tasks
+	go registerNotifyDueTasks(bot)
+
 	// Idle, to keep updates coming in, and avoid bot stopping.
 	updater.Idle()
 }
@@ -88,33 +92,52 @@ func initTelegramBot() {
 func registerCommandHandlers(dispatcher *ext.Dispatcher) {
 
 	// Register commands handlers
-	dispatcher.AddHandler(handlers.NewCommand(enum.HelloCommand, commands.Hello))
-	dispatcher.AddHandler(handlers.NewCommand(enum.SplitBillCommand, commands.SplitBill))
-	dispatcher.AddHandler(handlers.NewCommand(enum.HouseworkCommand, commands.Housework))
-	dispatcher.AddHandler(handlers.NewCommand(enum.HelpCommand, commands.Help))
-	dispatcher.AddHandler(handlers.NewCommand(enum.SettingsCommand, commands.Settings))
-	dispatcher.AddHandler(handlers.NewCommand(enum.FeedbackCommand, commands.Feedback))
-	dispatcher.AddHandler(handlers.NewCommand(enum.GSheetsCommand, commands.GSheets))
+	dispatcher.AddHandler(botHandlers.NewCommand(enum.HelloCommand, commands.Hello))
+	dispatcher.AddHandler(botHandlers.NewCommand(enum.SplitBillCommand, commands.SplitBill))
+	dispatcher.AddHandler(botHandlers.NewCommand(enum.HouseworkCommand, commands.Housework))
+	dispatcher.AddHandler(botHandlers.NewCommand(enum.HelpCommand, commands.Help))
+	dispatcher.AddHandler(botHandlers.NewCommand(enum.SettingsCommand, commands.Settings))
+	dispatcher.AddHandler(botHandlers.NewCommand(enum.FeedbackCommand, commands.Feedback))
+	dispatcher.AddHandler(botHandlers.NewCommand(enum.GSheetsCommand, commands.GSheets))
 
 	// Register conversation handlers
 	// Register conversation handlers for the split bill
-	dispatcher.AddHandler(handlers.NewConversation(
-		[]ext.Handler{handlers.NewCallback(callbackquery.Equal("splitbill.add"), commands.StartAddSplitBill)},
+	dispatcher.AddHandler(botHandlers.NewConversation(
+		[]ext.Handler{botHandlers.NewCallback(callbackquery.Equal("splitbill.add"), commands.StartAddSplitBill)},
 		map[string][]ext.Handler{
-			enum.AddExpense: {handlers.NewMessage(commands.NoCommands, commands.AddExpenseConversationHandler)},
+			enum.AddExpense: {botHandlers.NewMessage(commands.NoCommands, commands.AddExpenseConversationHandler)},
 		},
-		&handlers.ConversationOpts{
-			Exits:        []ext.Handler{handlers.NewCommand(enum.CancelCommand, commands.Cancel)},
+		&botHandlers.ConversationOpts{
+			Exits:        []ext.Handler{botHandlers.NewCommand(enum.CancelCommand, commands.Cancel)},
 			StateStorage: conversation.NewInMemoryStorage(conversation.KeyStrategySenderAndChat),
 			AllowReEntry: true,
 		},
 	))
 
 	// Register callback query handlers
-	dispatcher.AddHandler(handlers.NewCallback(callbackquery.Prefix("help."), commands.HandleHelpActionCallback))
-	dispatcher.AddHandler(handlers.NewCallback(callbackquery.Prefix("splitbill."), commands.HandleSplitBillActionCallback))
-	dispatcher.AddHandler(handlers.NewCallback(callbackquery.Prefix("housework."), commands.HandleHouseworkActionCallback))
+	dispatcher.AddHandler(botHandlers.NewCallback(callbackquery.Prefix("help."), commands.HandleHelpActionCallback))
+	dispatcher.AddHandler(botHandlers.NewCallback(callbackquery.Prefix("splitbill."), commands.HandleSplitBillActionCallback))
+	dispatcher.AddHandler(botHandlers.NewCallback(callbackquery.Prefix("housework."), commands.HandleHouseworkActionCallback))
 
 	// Register conversation handlers
 
+}
+
+// register notifyDueTasks sends a notification to the channel when there are tasks due today
+func registerNotifyDueTasks(bot *gotgbot.Bot) {
+	// Create a new cron job
+	c := cron.New()
+
+	// Schedule the cron job to run every day at a specific time (e.g., midnight)
+	//cronExpression := "*/1 * * * *"
+	cronExpression := "0 */8 * * *"
+	_, _ = c.AddFunc(cronExpression, func() {
+		commands.NotifyDueTasks(bot)
+	})
+
+	// Start the cron job scheduler
+	c.Start()
+
+	// Keep the program running (you can add other logic here if needed)
+	select {}
 }
