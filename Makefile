@@ -1,6 +1,6 @@
 deploy:
 	flyctl deploy
-	flyctl scale count 1
+	flyctl scale count 1 --yes
 	flyctl status
 
 redeploy:
@@ -8,11 +8,11 @@ redeploy:
 	flyctl status
 
 turn_off:
-	flyctl scale count 0
+	flyctl scale count 0 --yes
 	flyctl status
 
-scale_1_instance:
-	flyctl scale count 1
+scale_to_1_instance:
+	flyctl scale count 1 --yes
 	flyctl status
 
 
