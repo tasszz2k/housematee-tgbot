@@ -130,7 +130,7 @@ func registerNotifyDueTasks(bot *gotgbot.Bot) {
 
 	// Schedule the cron job to run every day at a specific time (e.g., midnight)
 	//cronExpression := "*/1 * * * *"
-	cronExpression := "0 */8 * * *"
+	cronExpression := "0 */8 * * *" // TODO: Read from config
 	_, _ = c.AddFunc(cronExpression, func() {
 		commands.NotifyDueTasks(bot)
 	})

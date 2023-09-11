@@ -9,6 +9,16 @@ func GetCurrentDate() string {
 	return time.Now().Format("02/01/2006")
 }
 
+// AddDay add day operation
+func AddDay(dateStr string, day int) (string, error) {
+	t, err := time.Parse("02/01/2006", dateStr)
+	if err != nil {
+		return "", err
+	}
+	t = t.AddDate(0, 0, day)
+	return t.Format("02/01/2006"), nil
+}
+
 func StringToGoogleDate(dateStr string) (date.Date, error) {
 	t, err := time.Parse("02/01/2006", dateStr)
 	if err != nil {

@@ -18,6 +18,13 @@ const (
 	HouseworkAddCommand    = "housework.add"
 	HouseworkUpdateCommand = "housework.update"
 	HouseworkDeleteCommand = "housework.delete"
+
+	HouseworkActionPrefix   = "housework."
+	HouseworkViewAction     = "view"
+	HouseworkMarkDoneAction = "done"
+	HouseworkAssignAction   = "assign"
+	HouseworkUpdateAction   = "update"
+	HouseworkDeleteAction   = "delete"
 )
 
 // Housework handles the /housework command.
@@ -36,8 +43,8 @@ func Housework(bot *gotgbot.Bot, ctx *ext.Context) error {
 			{
 				{Text: "List", CallbackData: "housework.list"},
 				{Text: "Add", CallbackData: "housework.add"},
-				{Text: "Update", CallbackData: "housework.update"},
-				{Text: "Delete", CallbackData: "housework.delete"},
+				//{Text: "Update", CallbackData: "housework.update"},
+				//{Text: "Delete", CallbackData: "housework.delete"},
 			},
 		},
 	}
@@ -84,7 +91,7 @@ func HandleHouseworkActionCallback(bot *gotgbot.Bot, ctx *ext.Context) error {
 	default:
 		// Handle other button clicks (if any)
 		// Get prefix from CallbackData
-		if strings.HasPrefix(cb.Data, HouseworkListCommand) {
+		if strings.HasPrefix(cb.Data, HouseworkActionPrefix) {
 			// Handle select the housework to view command
 			err := HandleHouseworkSelectActionCallback(bot, ctx)
 			if err != nil {
@@ -116,7 +123,7 @@ func HandleHouseworkListActionCallback(bot *gotgbot.Bot, ctx *ext.Context) error
 	keyboard := make([][]gotgbot.InlineKeyboardButton, 0, len(houseworkList))
 	for _, housework := range houseworkList {
 		keyboard = append(keyboard, []gotgbot.InlineKeyboardButton{
-			{Text: housework.Name, CallbackData: fmt.Sprintf("housework.list.%d", housework.ID)},
+			{Text: housework.Name, CallbackData: fmt.Sprintf("housework.%d.view", housework.ID)},
 		})
 	}
 	inlineKeyboard := gotgbot.InlineKeyboardMarkup{
@@ -135,9 +142,12 @@ func HandleHouseworkListActionCallback(bot *gotgbot.Bot, ctx *ext.Context) error
 
 func HandleHouseworkSelectActionCallback(bot *gotgbot.Bot, ctx *ext.Context) error {
 	// extract housework id from CallbackData
-	// example: housework.list.1, housework.list.2, ...
-	houseworkIdStr := strings.Split(ctx.Update.CallbackQuery.Data, ".")[2]
+	// [object].[id].[action]
+	// example: housework.1.view, housework.2.view, ...
+	commandElements := strings.Split(ctx.Update.CallbackQuery.Data, ".")
+	houseworkIdStr := commandElements[1]
 	houseworkId := cast.ToInt(houseworkIdStr)
+	selectedAction := commandElements[2]
 
 	// get the list of housework
 	houseworkMap, err := handlers.GetHouseworkMap()
@@ -151,17 +161,162 @@ func HandleHouseworkSelectActionCallback(bot *gotgbot.Bot, ctx *ext.Context) err
 		return fmt.Errorf("housework with id %d not found", houseworkId)
 	}
 
+	numberOfHousework := len(houseworkMap)
+
+	switch selectedAction {
+	case HouseworkViewAction:
+		// show the housework
+		err = handleHouseworkViewAction(bot, ctx, housework, err)
+	case HouseworkMarkDoneAction:
+		// mark the housework as done
+		err = handleHouseworkMarkDoneAction(bot, ctx, housework, numberOfHousework, err)
+	case HouseworkAssignAction:
+		// assign the housework to other
+		err = handleHouseworkAssignToOtherAction(bot, ctx, housework, numberOfHousework, err)
+	}
+
+	if err != nil {
+		return fmt.Errorf("failed to send /housework response: %w", err)
+	}
+
+	return nil
+}
+
+func handleHouseworkAssignToOtherAction(bot *gotgbot.Bot, ctx *ext.Context, housework models.Task, numberOfHousework int, err error) error {
+	svc, spreadsheetId, currentSheetName, err := handlers.GetCurrentSheetInfo()
+	if err != nil {
+		return err
+	}
+	// get the member list
+	members, err := handlers.GetMembers(svc, spreadsheetId, currentSheetName)
+	if err != nil {
+		return err
+	}
+
+	// assign to the next assignee
+	// map[username]member = [
+	// 	"username1": member1(id=1),
+	//	"username2": member2(id=2),
+	//  "username3": members3(id=3)
+	//	]
+	// case1:
+	// currentAssignee = "username1"(id=1)
+	// => nextAssignee = "username2"(id=2)
+	// case2:
+	// currentAssignee = "username3"(id=3) (= last member)
+	// => nextAssignee = "username1"(id=1)
+
+	// get the current assignee
+	currentAssignee := housework.Assignee
+	numOfMembers := len(members)
+	var nextAssignee string
+	for i, member := range members {
+		if member.Username == currentAssignee {
+			if i == numOfMembers-1 {
+				// last member
+				nextAssignee = members[0].Username
+			} else {
+				nextAssignee = members[i+1].Username
+			}
+			break
+		}
+	}
+
+	// update only the assignee
+	housework.Assignee = nextAssignee
+
+	// upsert the housework
+	err = handlers.UpdateHousework(svc, spreadsheetId, currentSheetName, housework, numberOfHousework)
+	if err != nil {
+		return err
+	}
+
 	// show the housework
-	// Create an inline keyboard with buttons for each command
+	err = handleHouseworkViewAction(bot, ctx, housework, err)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func handleHouseworkMarkDoneAction(bot *gotgbot.Bot, ctx *ext.Context, housework models.Task, numberOfHousework int, err error) error {
+	svc, spreadsheetId, currentSheetName, err := handlers.GetCurrentSheetInfo()
+	if err != nil {
+		return err
+	}
+	// get the member list
+	members, err := handlers.GetMembers(svc, spreadsheetId, currentSheetName)
+	if err != nil {
+		return err
+	}
+
+	// assign to the next assignee
+	// map[username]member = [
+	// 	"username1": member1(id=1),
+	//	"username2": member2(id=2),
+	//  "username3": members3(id=3)
+	//	]
+	// case1:
+	// currentAssignee = "username1"(id=1)
+	// => nextAssignee = "username2"(id=2)
+	// case2:
+	// currentAssignee = "username3"(id=3) (= last member)
+	// => nextAssignee = "username1"(id=1)
+
+	// get the current assignee
+	currentAssignee := housework.Assignee
+	numOfMembers := len(members)
+	var nextAssignee string
+	for i, member := range members {
+		if member.Username == currentAssignee {
+			if i == numOfMembers-1 {
+				// last member
+				nextAssignee = members[0].Username
+			} else {
+				nextAssignee = members[i+1].Username
+			}
+			break
+		}
+	}
+
+	// update the housework
+	housework.Assignee = nextAssignee
+
+	housework.LastDone = utilities.GetCurrentDate()
+	nextDue, err := utilities.AddDay(housework.LastDone, housework.Frequency)
+	if err != nil {
+		logrus.Errorf("failed to add day: %s", err.Error())
+		return err
+	}
+	housework.NextDue = nextDue
+
+	// upsert the housework
+	err = handlers.UpdateHousework(svc, spreadsheetId, currentSheetName, housework, numberOfHousework)
+	if err != nil {
+		return err
+	}
+
+	// show the housework
+	err = handleHouseworkViewAction(bot, ctx, housework, err)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func handleHouseworkViewAction(bot *gotgbot.Bot, ctx *ext.Context, housework models.Task, err error) error {
+	// Creates an inline keyboard with buttons for each command
 	inlineKeyboard := gotgbot.InlineKeyboardMarkup{
 		InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
 			{
-				{Text: "Mark as done", CallbackData: fmt.Sprintf("housework.done.%d", housework.ID)},
-				{Text: "Assign to housemate", CallbackData: fmt.Sprintf("housework.assign.%d", housework.ID)},
+				{Text: "Mark as done", CallbackData: fmt.Sprintf("housework.%d.done", housework.ID)},
+				{Text: "Assign to other", CallbackData: fmt.Sprintf("housework.%d.assign", housework.ID)},
 			},
 			{
-				{Text: "Update", CallbackData: fmt.Sprintf("housework.update.%d", housework.ID)},
-				{Text: "Delete", CallbackData: fmt.Sprintf("housework.delete.%d", housework.ID)},
+				{Text: "Update", CallbackData: fmt.Sprintf("housework.%d.update", housework.ID)},
+				{Text: "Delete", CallbackData: fmt.Sprintf("housework.%d.delete", housework.ID)},
 			},
 		},
 	}
@@ -172,10 +327,7 @@ func HandleHouseworkSelectActionCallback(bot *gotgbot.Bot, ctx *ext.Context) err
 		ReplyMarkup: inlineKeyboard,
 		ParseMode:   "markdown",
 	})
-	if err != nil {
-		return fmt.Errorf("failed to send /housework response: %w", err)
-	}
-	return nil
+	return err
 }
 
 // NotifyDueTasks sends a notification to the channel when there are tasks due today or overdue.

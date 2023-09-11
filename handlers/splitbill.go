@@ -501,22 +501,6 @@ func convertBalancesDataToBalanceModel(values [][]interface{}) (balances models.
 	return balances
 }
 
-func GetNumberOfMembers(svc *services.GSheets, spreadsheetId string, currentSheetName string) (int, error) {
-	// get number of members read range
-	numberOfMembersReadRange := currentSheetName + "!" + config.NumberOfMembersCell
-
-	// get number of members data
-	numberOfMembersValue, err := svc.GetValue(context.TODO(), spreadsheetId, numberOfMembersReadRange)
-	if err != nil {
-		logrus.Errorf("failed to get number of members data: %s", err.Error())
-		return 0, err
-	}
-
-	// convert number of members data to int
-	numberOfMembers := cast.ToInt(numberOfMembersValue)
-	return numberOfMembers, nil
-}
-
 func renderReportMarkdown(report models.Report, balances models.Balance) string {
 	text := "*Report*\n\n"
 	text += "*Expenses*\n"

@@ -21,9 +21,6 @@ var (
 	BalanceStartCell = "I9"
 	BalanceEndCol    = "M" // BalanceEndRow = BalanceStartRow + numberOfHousemates
 
-	// Members sheet
-	NumberOfMembersCell = "P2"
-
 	// Tasks sheet
 	SeparatedSheetTasksName = "Tasks"
 	TaskStartRow            = 2
@@ -31,6 +28,12 @@ var (
 	TaskEndCol              = "H"
 	NumberOfTasksCell       = "B1"
 	NumberOfTasksReadRange  = "Tasks!B1"
+
+	// Members sheet
+	NumberOfMembersCell = "P2"
+	MembersStartRow     = 3
+	MembersStartCol     = "O"
+	MembersEndCol       = "P"
 )
 
 const (
