@@ -30,6 +30,7 @@ git clone https://github.com/your-username/housematee-tgbot.git
     - /settings - Adjust bot settings, such as language, notification preferences, and more.
     - /feedback - Provide feedback about the bot or report issues for continuous improvement.
     - /help - Get a list of available commands and learn how to use the bot effectively.
+- The sample spreadsheet: [here](https://docs.google.com/spreadsheets/d/1a_etCpFf-B1woVM9qjLPM0Nzwox3KPm_ok2bSibdgJk/edit?usp=sharing)
 
 ## Project structure
 
