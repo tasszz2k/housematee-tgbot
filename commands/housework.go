@@ -37,22 +37,26 @@ func Housework(bot *gotgbot.Bot, ctx *ext.Context) error {
 	// - /update - update a record.
 	// - /delete - delete a record.
 
-	// Create an inline keyboard with buttons for each command
-	inlineKeyboard := gotgbot.InlineKeyboardMarkup{
-		InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
-			{
-				{Text: "List", CallbackData: "housework.list"},
-				{Text: "Add", CallbackData: "housework.add"},
-				//{Text: "Update", CallbackData: "housework.update"},
-				//{Text: "Delete", CallbackData: "housework.delete"},
-			},
-		},
-	}
+	//// Create an inline keyboard with buttons for each command
+	//inlineKeyboard := gotgbot.InlineKeyboardMarkup{
+	//	InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
+	//		{
+	//			{Text: "List", CallbackData: "housework.list"},
+	//			{Text: "Add", CallbackData: "housework.add"},
+	//			//{Text: "Update", CallbackData: "housework.update"},
+	//			//{Text: "Delete", CallbackData: "housework.delete"},
+	//		},
+	//	},
+	//}
+	//
+	//// Reply to the user with the available commands as buttons
+	//_, err := ctx.EffectiveMessage.Reply(bot, "Select a housework action:", &gotgbot.SendMessageOpts{
+	//	ReplyMarkup: inlineKeyboard,
+	//})
 
-	// Reply to the user with the available commands as buttons
-	_, err := ctx.EffectiveMessage.Reply(bot, "Select a housework action:", &gotgbot.SendMessageOpts{
-		ReplyMarkup: inlineKeyboard,
-	})
+	// show list of housework
+	err := HandleHouseworkListActionCallback(bot, ctx)
+
 	if err != nil {
 		return fmt.Errorf("failed to send /housework response: %w", err)
 	}
@@ -131,6 +135,10 @@ func HandleHouseworkListActionCallback(bot *gotgbot.Bot, ctx *ext.Context) error
 			{Text: name, CallbackData: fmt.Sprintf("housework.%d.view", housework.ID)},
 		})
 	}
+	keyboard = append(keyboard, []gotgbot.InlineKeyboardButton{
+		{Text: "➕ Add new housework", CallbackData: "housework.add"},
+	})
+
 	inlineKeyboard := gotgbot.InlineKeyboardMarkup{
 		InlineKeyboard: keyboard,
 	}
