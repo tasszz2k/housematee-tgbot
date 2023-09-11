@@ -542,7 +542,7 @@ func renderReportMarkdown(report models.Report, balances models.Balance) string 
 
 	balanceMap := balances.Users
 	for username, balance := range balanceMap {
-		text += username + ":\n"
+		text += "*" + username + "*" + ":\n"
 		text += "• *Total Paid*: " + balance.TotalPaid + "\n"
 		text += "• *Have to pay*: " + balance.HaveToPay + "\n"
 		text += "• *Balance*: " + balance.Balance + "\n"

@@ -104,7 +104,7 @@ func ConvertHouseworkToMarkdownFormat(housework models.Task) string {
 	// if the next due is today, add an emoji
 	nextDue := housework.NextDue
 	if housework.NextDue == utilities.GetCurrentDate() {
-		nextDue = fmt.Sprintf("*%s  📢 Today*", housework.NextDue)
+		nextDue = fmt.Sprintf("*%s » 📢 Today*", housework.NextDue)
 	}
 
 	return fmt.Sprintf(

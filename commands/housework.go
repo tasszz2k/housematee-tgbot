@@ -122,8 +122,13 @@ func HandleHouseworkListActionCallback(bot *gotgbot.Bot, ctx *ext.Context) error
 	// Create an inline keyboard with buttons for each command
 	keyboard := make([][]gotgbot.InlineKeyboardButton, 0, len(houseworkList))
 	for _, housework := range houseworkList {
+		name := housework.Name
+		isDateDueOrOverdue, _ := utilities.IsDateDueOrOverdue(housework.NextDue)
+		if isDateDueOrOverdue {
+			name += " » 📢"
+		}
 		keyboard = append(keyboard, []gotgbot.InlineKeyboardButton{
-			{Text: housework.Name, CallbackData: fmt.Sprintf("housework.%d.view", housework.ID)},
+			{Text: name, CallbackData: fmt.Sprintf("housework.%d.view", housework.ID)},
 		})
 	}
 	inlineKeyboard := gotgbot.InlineKeyboardMarkup{
