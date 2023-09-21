@@ -3,6 +3,12 @@
 Housematee is a Telegram bot designed to make your life with housemates easier and more organized. It allows you to
 manage home bills, set reminders for housework, and more, all within the convenience of Telegram.
 
+
+| Commands            | Housework               | Split bill              |
+|---------------------|-------------------------|-------------------------|
+| ![img.png](docs/commands.png) | ![img_1.png](docs/housework.png) | ![img_2.png](docs/split_bill.png) |
+
+
 ## Features
 
 - **Bill Sharing**: Easily split and manage home bills among your housemates.
@@ -124,7 +130,8 @@ housematee-tgbot/
 
 **Command: `/splitbill` handler**
 
-- [ ] show the list of buttons for bill management: `add`, `view`, `update`, `delete`, `report`
+- [x] show the list of buttons for bill management: `add`, `view`, `update`, 
+  `delete`, `report`
     - [x] handle `add` button:
         - user input: each on a new line: `name`, `amount`, `date`, `payer`
           ```
@@ -169,7 +176,7 @@ housematee-tgbot/
 **Command: `/housework` handler**
 
 - Show the list of buttons for housework management: `list`, `add`, `update`, `delete`
-    - [ ] handle `list` button:
+    - [x] handle `list` button:
         - show the list of housework tasks as table
           ```markdown
             | ID | Task name | Frequency | Last done | Next due | Next assignee |
@@ -178,7 +185,7 @@ housematee-tgbot/
             | 2  | ...       | ...       | ...       | ...      |...            |
           ```
         - show buttons: each task as a button, `back` (optional)
-        - [ ] handle `task selected` button
+        - [x] handle `task selected` button
             - show task details
               ```
                   ID: <id> 
