@@ -21,7 +21,10 @@ func main() {
 	// Load configuration
 	config.Load()
 	// init service
-	_, err := services.InitGSheetsSvc(context.TODO(), config.GetAppConfig().GoogleApis.Credentials)
+	_, err := services.InitGSheetsSvc(
+		context.TODO(),
+		config.GetAppConfig().GoogleApis.Credentials,
+	)
 	if err != nil {
 		panic("failed to init google sheets service: " + err.Error())
 	}
@@ -43,31 +46,44 @@ func initTelegramBot() {
 	}
 
 	// Create updater and dispatcher.
-	updater := ext.NewUpdater(&ext.UpdaterOpts{
-		Dispatcher: ext.NewDispatcher(&ext.DispatcherOpts{
-			// If a handler returns an error, log it and continue going.
-			Error: func(b *gotgbot.Bot, ctx *ext.Context, err error) ext.DispatcherAction {
-				log.Println("an error occurred while handling update:", err.Error())
-				return ext.DispatcherActionNoop
-			},
-			MaxRoutines: ext.DefaultMaxRoutines,
-		}),
-	})
+	updater := ext.NewUpdater(
+		&ext.UpdaterOpts{
+			Dispatcher: ext.NewDispatcher(
+				&ext.DispatcherOpts{
+					// If a handler returns an error, log it and continue going.
+					Error: func(
+						b *gotgbot.Bot,
+						ctx *ext.Context,
+						err error,
+					) ext.DispatcherAction {
+						log.Println(
+							"an error occurred while handling update:",
+							err.Error(),
+						)
+						return ext.DispatcherActionNoop
+					},
+					MaxRoutines: ext.DefaultMaxRoutines,
+				},
+			),
+		},
+	)
 	dispatcher := updater.Dispatcher
 
 	// handle commands
 	registerCommandHandlers(dispatcher)
 
 	// Start receiving updates.
-	err = updater.StartPolling(bot, &ext.PollingOpts{
-		DropPendingUpdates: true,
-		GetUpdatesOpts: &gotgbot.GetUpdatesOpts{
-			Timeout: 9,
-			RequestOpts: &gotgbot.RequestOpts{
-				Timeout: time.Second * 10,
+	err = updater.StartPolling(
+		bot, &ext.PollingOpts{
+			DropPendingUpdates: true,
+			GetUpdatesOpts: &gotgbot.GetUpdatesOpts{
+				Timeout: 9,
+				RequestOpts: &gotgbot.RequestOpts{
+					Timeout: time.Second * 10,
+				},
 			},
 		},
-	})
+	)
 	if err != nil {
 		panic("failed to start polling: " + err.Error())
 	}
@@ -92,32 +108,99 @@ func initTelegramBot() {
 func registerCommandHandlers(dispatcher *ext.Dispatcher) {
 
 	// Register commands handlers
-	dispatcher.AddHandler(botHandlers.NewCommand(enum.HelloCommand, commands.Hello))
-	dispatcher.AddHandler(botHandlers.NewCommand(enum.SplitBillCommand, commands.SplitBill))
-	dispatcher.AddHandler(botHandlers.NewCommand(enum.HouseworkCommand, commands.Housework))
-	dispatcher.AddHandler(botHandlers.NewCommand(enum.HelpCommand, commands.Help))
-	dispatcher.AddHandler(botHandlers.NewCommand(enum.SettingsCommand, commands.Settings))
-	dispatcher.AddHandler(botHandlers.NewCommand(enum.FeedbackCommand, commands.Feedback))
-	dispatcher.AddHandler(botHandlers.NewCommand(enum.GSheetsCommand, commands.GSheets))
+	dispatcher.AddHandler(
+		botHandlers.NewCommand(
+			enum.HelloCommand,
+			commands.HandleCommands,
+		),
+	)
+	dispatcher.AddHandler(
+		botHandlers.NewCommand(
+			enum.SplitBillCommand,
+			commands.HandleCommands,
+		),
+	)
+	dispatcher.AddHandler(
+		botHandlers.NewCommand(
+			enum.HouseworkCommand,
+			commands.HandleCommands,
+		),
+	)
+	dispatcher.AddHandler(
+		botHandlers.NewCommand(
+			enum.HelpCommand,
+			commands.HandleCommands,
+		),
+	)
+	dispatcher.AddHandler(
+		botHandlers.NewCommand(
+			enum.SettingsCommand,
+			commands.HandleCommands,
+		),
+	)
+	dispatcher.AddHandler(
+		botHandlers.NewCommand(
+			enum.FeedbackCommand,
+			commands.HandleCommands,
+		),
+	)
+	dispatcher.AddHandler(
+		botHandlers.NewCommand(
+			enum.GSheetsCommand,
+			commands.HandleCommands,
+		),
+	)
 
 	// Register conversation handlers
 	// Register conversation handlers for the split bill
-	dispatcher.AddHandler(botHandlers.NewConversation(
-		[]ext.Handler{botHandlers.NewCallback(callbackquery.Equal("splitbill.add"), commands.StartAddSplitBill)},
-		map[string][]ext.Handler{
-			enum.AddExpense: {botHandlers.NewMessage(commands.NoCommands, commands.AddExpenseConversationHandler)},
-		},
-		&botHandlers.ConversationOpts{
-			Exits:        []ext.Handler{botHandlers.NewCommand(enum.CancelCommand, commands.Cancel)},
-			StateStorage: conversation.NewInMemoryStorage(conversation.KeyStrategySenderAndChat),
-			AllowReEntry: true,
-		},
-	))
+	dispatcher.AddHandler(
+		botHandlers.NewConversation(
+			[]ext.Handler{
+				botHandlers.NewCallback(
+					callbackquery.Equal("splitbill.add"),
+					commands.StartAddSplitBill,
+				),
+			},
+			map[string][]ext.Handler{
+				enum.AddExpense: {
+					botHandlers.NewMessage(
+						commands.NoCommands,
+						commands.AddExpenseConversationHandler,
+					),
+				},
+			},
+			&botHandlers.ConversationOpts{
+				Exits: []ext.Handler{
+					botHandlers.NewCommand(
+						enum.CancelCommand,
+						commands.Cancel,
+					),
+				},
+				StateStorage: conversation.NewInMemoryStorage(conversation.KeyStrategySenderAndChat),
+				AllowReEntry: true,
+			},
+		),
+	)
 
 	// Register callback query handlers
-	dispatcher.AddHandler(botHandlers.NewCallback(callbackquery.Prefix("help."), commands.HandleHelpActionCallback))
-	dispatcher.AddHandler(botHandlers.NewCallback(callbackquery.Prefix("splitbill."), commands.HandleSplitBillActionCallback))
-	dispatcher.AddHandler(botHandlers.NewCallback(callbackquery.Prefix("housework."), commands.HandleHouseworkActionCallback))
+	dispatcher.AddHandler(
+		botHandlers.NewCallback(
+			callbackquery.Prefix("help."),
+			commands.HandleHelpActionCallback,
+		),
+	)
+	dispatcher.AddHandler(
+		botHandlers.NewCallback(
+			callbackquery.Prefix("splitbill."),
+			commands.HandleSplitBillActionCallback,
+		),
+	)
+	dispatcher.AddHandler(
+		botHandlers.NewCallback(
+			callbackquery.Prefix("housework."),
+			commands.HandleHouseworkActionCallback,
+		),
+	)
 
 	// Register conversation handlers
 
@@ -130,10 +213,12 @@ func registerNotifyDueTasks(bot *gotgbot.Bot) {
 
 	// Schedule the cron job to run every day at a specific time (e.g., midnight)
 	//cronExpression := "*/1 * * * *"
-	cronExpression := "0 */8 * * *" // TODO: Read from config
-	_, _ = c.AddFunc(cronExpression, func() {
-		commands.NotifyDueTasks(bot)
-	})
+	cronExpression := "0 */12 * * *" // TODO: Read from config
+	_, _ = c.AddFunc(
+		cronExpression, func() {
+			commands.NotifyDueTasks(bot)
+		},
+	)
 
 	// Start the cron job scheduler
 	c.Start()

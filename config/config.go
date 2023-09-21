@@ -19,7 +19,8 @@ type AppConfig struct {
 }
 
 type Telegram struct {
-	ApiToken string `mapstructure:"api_token" validate:"required"`
+	ApiToken        string  `mapstructure:"api_token" validate:"required"`
+	AllowedChannels []int64 `mapstructure:"allowed_channels" validate:"required"`
 }
 
 type GoogleApis struct {
@@ -87,7 +88,12 @@ func loadConfigFromFile() error {
 	}
 
 	v.AddConfigPath(filepath.Dir(configFile))
-	v.SetConfigName(strings.TrimSuffix(filepath.Base(configFile), filepath.Ext(configFile)))
+	v.SetConfigName(
+		strings.TrimSuffix(
+			filepath.Base(configFile),
+			filepath.Ext(configFile),
+		),
+	)
 	v.AutomaticEnv()
 
 	return v.ReadInConfig()

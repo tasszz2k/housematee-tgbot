@@ -3,6 +3,7 @@ production: false
 
 telegram:
   api_token: {{housematee-tgbot.telegram.api_token}}}
+  allowed_channels: {{housematee-tgbot.telegram.allowed_channels}}}
 
 google_apis:
   credentials:
