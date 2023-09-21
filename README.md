@@ -10,11 +10,12 @@ manage home bills, set reminders for housework, and more, all within the conveni
     <th>Split bill</th>
   </tr>
   <tr>
-    <td><img src="docs/commands.png" alt="Commands" width="300px"></td>
-    <td><img src="docs/housework.png" alt="Housework" width="300px"></td>
-    <td><img src="docs/split_bill.png" alt="Split bill" width="300px"></td>
+    <td><img src="docs/commands.png" alt="Commands" style="width: 100%; height: auto;"></td>
+    <td><img src="docs/housework.png" alt="Housework" style="width: 100%; height: auto;"></td>
+    <td><img src="docs/split_bill.png" alt="Split bill" style="width: 100%; height: auto;"></td>
   </tr>
 </table>
+
 
 ## Features
 
