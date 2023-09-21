@@ -3,11 +3,18 @@
 Housematee is a Telegram bot designed to make your life with housemates easier and more organized. It allows you to
 manage home bills, set reminders for housework, and more, all within the convenience of Telegram.
 
-
-| Commands            | Housework               | Split bill              |
-|---------------------|-------------------------|-------------------------|
-| ![img.png](docs/commands.png) | ![img_1.png](docs/housework.png) | ![img_2.png](docs/split_bill.png) |
-
+<table style="width: 100%;">
+  <tr>
+    <th>Commands</th>
+    <th>Housework</th>
+    <th>Split bill</th>
+  </tr>
+  <tr>
+    <td><img src="docs/commands.png" alt="Commands" width="300px"></td>
+    <td><img src="docs/housework.png" alt="Housework" width="300px"></td>
+    <td><img src="docs/split_bill.png" alt="Split bill" width="300px"></td>
+  </tr>
+</table>
 
 ## Features
 
