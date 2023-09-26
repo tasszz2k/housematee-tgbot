@@ -116,6 +116,12 @@ func registerCommandHandlers(dispatcher *ext.Dispatcher) {
 	)
 	dispatcher.AddHandler(
 		botHandlers.NewCommand(
+			enum.StartCommand,
+			commands.HandleCommands,
+		),
+	)
+	dispatcher.AddHandler(
+		botHandlers.NewCommand(
 			enum.SplitBillCommand,
 			commands.HandleCommands,
 		),
@@ -147,6 +153,12 @@ func registerCommandHandlers(dispatcher *ext.Dispatcher) {
 	dispatcher.AddHandler(
 		botHandlers.NewCommand(
 			enum.GSheetsCommand,
+			commands.HandleCommands,
+		),
+	)
+	dispatcher.AddHandler(
+		botHandlers.NewCommand(
+			enum.SplitBillAddActionCommand,
 			commands.HandleCommands,
 		),
 	)

@@ -19,9 +19,11 @@ manage home bills, set reminders for housework, and more, all within the conveni
 ## Features
 
 - **Bill Sharing**: Easily split and manage home bills among your housemates.
-- **Housework Reminders**: Set reminders for housework tasks and keep your living space clean and organized.
+- **Housework Reminders
+  **: Set reminders for housework tasks and keep your living space clean and organized.
 - **Customization**: Customize Housematee to suit your preferences.
-- **Feedback**: Share your feedback and suggestions with us to improve Housematee.
+- **Feedback
+  **: Share your feedback and suggestions with us to improve Housematee.
 
 ## Installation
 
@@ -36,10 +38,11 @@ git clone https://github.com/your-username/housematee-tgbot.git
 - Start a chat with Housematee bot on Telegram.
 - Use the available commands to manage bills, set reminders, and more.
 - Supported commands:
+    - /splitbill - Easily split expenses with your housemates and keep track of who owes what.
+    - /splitbill_add - Add a new expenses quickly and easily.
+    - /housework - Organize and delegate house chores among housemates with reminders and schedules.
     - /hello - A greeting command to initiate interaction with the bot.
     - /gsheets - Manage and interact with your Google Sheets data directly from the bot.
-    - /splitbill - Easily split expenses with your housemates and keep track of who owes what.
-    - /housework - Organize and delegate house chores among housemates with reminders and schedules.
     - /settings - Adjust bot settings, such as language, notification preferences, and more.
     - /feedback - Provide feedback about the bot or report issues for continuous improvement.
     - /help - Get a list of available commands and learn how to use the bot effectively.
@@ -137,7 +140,7 @@ housematee-tgbot/
 
 **Command: `/splitbill` handler**
 
-- [x] show the list of buttons for bill management: `add`, `view`, `update`, 
+- [x] show the list of buttons for bill management: `add`, `view`, `update`,
   `delete`, `report`
     - [x] handle `add` button:
         - user input: each on a new line: `name`, `amount`, `date`, `payer`

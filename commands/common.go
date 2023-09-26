@@ -66,7 +66,7 @@ func HandleCommands(bot *gotgbot.Bot, ctx *ext.Context) error {
 	// get command from the context
 	command := getCommandFromMessage(bot, ctx.Message)
 	switch command {
-	case enum.HelloCommand:
+	case enum.HelloCommand, enum.StartCommand:
 		return Hello(bot, ctx)
 	case enum.GSheetsCommand:
 		if !CheckPermission(bot, ctx) {
@@ -78,6 +78,11 @@ func HandleCommands(bot *gotgbot.Bot, ctx *ext.Context) error {
 			return nil
 		}
 		return SplitBill(bot, ctx)
+	case enum.SplitBillAddActionCommand:
+		if !CheckPermission(bot, ctx) {
+			return nil
+		}
+		return StartAddSplitBill(bot, ctx)
 	case enum.HouseworkCommand:
 		if !CheckPermission(bot, ctx) {
 			return nil

@@ -1,14 +1,16 @@
 package enum
 
 const (
-	HelloCommand     = "hello"
-	GSheetsCommand   = "gsheets"
-	SplitBillCommand = "splitbill"
-	HouseworkCommand = "housework"
-	SettingsCommand  = "settings"
-	FeedbackCommand  = "feedback"
-	HelpCommand      = "help"
-	CancelCommand    = "cancel"
+	StartCommand              = "start"
+	HelloCommand              = "hello"
+	GSheetsCommand            = "gsheets"
+	SplitBillCommand          = "splitbill"
+	SplitBillAddActionCommand = "splitbill_add"
+	HouseworkCommand          = "housework"
+	SettingsCommand           = "settings"
+	FeedbackCommand           = "feedback"
+	HelpCommand               = "help"
+	CancelCommand             = "cancel"
 )
 
 func GetCommandAsText(cmd string) string {
