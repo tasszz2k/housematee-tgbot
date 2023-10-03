@@ -19,11 +19,9 @@ manage home bills, set reminders for housework, and more, all within the conveni
 ## Features
 
 - **Bill Sharing**: Easily split and manage home bills among your housemates.
-- **Housework Reminders
-  **: Set reminders for housework tasks and keep your living space clean and organized.
+- **Housework Reminders**: Set reminders for housework tasks and keep your living space clean and organized.
 - **Customization**: Customize Housematee to suit your preferences.
-- **Feedback
-  **: Share your feedback and suggestions with us to improve Housematee.
+- **Feedback**: Share your feedback and suggestions with us to improve Housematee.
 
 ## Installation
 
