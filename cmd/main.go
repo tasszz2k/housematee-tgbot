@@ -77,9 +77,9 @@ func initTelegramBot() {
 		bot, &ext.PollingOpts{
 			DropPendingUpdates: true,
 			GetUpdatesOpts: &gotgbot.GetUpdatesOpts{
-				Timeout: 9,
+				Timeout: 19,
 				RequestOpts: &gotgbot.RequestOpts{
-					Timeout: time.Second * 10,
+					Timeout: time.Second * 20,
 				},
 			},
 		},
@@ -156,21 +156,27 @@ func registerCommandHandlers(dispatcher *ext.Dispatcher) {
 			commands.HandleCommands,
 		),
 	)
-	dispatcher.AddHandler(
-		botHandlers.NewCommand(
-			enum.SplitBillAddActionCommand,
-			commands.HandleCommands,
-		),
-	)
+	//dispatcher.AddHandler(
+	//	botHandlers.NewCommand(
+	//		enum.SplitBillAddActionCommand,
+	//		commands.HandleCommands,
+	//	),
+	//)
 
 	// Register conversation handlers
 	// Register conversation handlers for the split bill
 	dispatcher.AddHandler(
 		botHandlers.NewConversation(
 			[]ext.Handler{
+				// register both command (splitbill_add)
+				// and callback (splitill.add) query handlers
 				botHandlers.NewCallback(
 					callbackquery.Equal("splitbill.add"),
 					commands.StartAddSplitBill,
+				),
+				botHandlers.NewCommand(
+					enum.SplitBillAddActionCommand,
+					commands.HandleCommands,
 				),
 			},
 			map[string][]ext.Handler{

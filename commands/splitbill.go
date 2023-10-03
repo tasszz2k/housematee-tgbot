@@ -92,9 +92,11 @@ func HandleSplitBillActionCallback(bot *gotgbot.Bot, ctx *ext.Context) error {
 	}
 
 	// Send a response to acknowledge the button click
-	_, err := cb.Answer(bot, &gotgbot.AnswerCallbackQueryOpts{
-		Text: fmt.Sprintf("You clicked %s", cb.Data),
-	})
+	_, err := cb.Answer(
+		bot, &gotgbot.AnswerCallbackQueryOpts{
+			Text: fmt.Sprintf("You clicked %s", cb.Data),
+		},
+	)
 	if err != nil {
 		return fmt.Errorf("failed to answer callback query: %w", err)
 	}
@@ -102,26 +104,36 @@ func HandleSplitBillActionCallback(bot *gotgbot.Bot, ctx *ext.Context) error {
 	return nil
 }
 
-func HandleSplitBillViewActionCallback(bot *gotgbot.Bot, ctx *ext.Context) error {
+func HandleSplitBillViewActionCallback(
+	bot *gotgbot.Bot,
+	ctx *ext.Context,
+) error {
 	return handlers.HandleSplitBillViewAction(bot, ctx)
 }
 
-func HandleSplitBillReportActionCallback(bot *gotgbot.Bot, ctx *ext.Context) error {
+func HandleSplitBillReportActionCallback(
+	bot *gotgbot.Bot,
+	ctx *ext.Context,
+) error {
 	return handlers.HandleSplitBillReportAction(bot, ctx)
 }
 
 func StartAddSplitBill(bot *gotgbot.Bot, ctx *ext.Context) error {
 	// Prompt the user to enter the details
-	htlmText := fmt.Sprintf(`Please provide the details of the expense in the following format:
+	htlmText := fmt.Sprintf(
+		`Please provide the details of the expense in the following format:
 ---
 [expense name]
 [amount]
 [date] <i>(auto-filled: %s)</i>
 [payer] <i>(auto-filled: @%s)</i>
-`, utilities.GetCurrentDate(), ctx.EffectiveUser.Username)
-	_, err := ctx.EffectiveMessage.Reply(bot, htlmText, &gotgbot.SendMessageOpts{
-		ParseMode: "html",
-	})
+`, utilities.GetCurrentDate(), ctx.EffectiveUser.Username,
+	)
+	_, err := ctx.EffectiveMessage.Reply(
+		bot, htlmText, &gotgbot.SendMessageOpts{
+			ParseMode: "html",
+		},
+	)
 	if err != nil {
 		return err
 	}
@@ -129,5 +141,8 @@ func StartAddSplitBill(bot *gotgbot.Bot, ctx *ext.Context) error {
 }
 
 func AddExpenseConversationHandler(bot *gotgbot.Bot, ctx *ext.Context) error {
+	if !CheckPermission(bot, ctx) {
+		return nil
+	}
 	return handlers.HandleExpenseAddAction(bot, ctx)
 }
