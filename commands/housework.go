@@ -2,15 +2,17 @@ package commands
 
 import (
 	"fmt"
+	"log"
+	"strings"
+
+	"housematee-tgbot/handlers"
+	"housematee-tgbot/models"
+	"housematee-tgbot/utilities"
+
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cast"
-	"housematee-tgbot/handlers"
-	"housematee-tgbot/models"
-	"housematee-tgbot/utilities"
-	"log"
-	"strings"
 )
 
 const (
@@ -105,9 +107,11 @@ func HandleHouseworkActionCallback(bot *gotgbot.Bot, ctx *ext.Context) error {
 	}
 
 	// Send a response to acknowledge the button click
-	_, err := cb.Answer(bot, &gotgbot.AnswerCallbackQueryOpts{
-		Text: fmt.Sprintf("You clicked %s", cb.Data),
-	})
+	_, err := cb.Answer(
+		bot, &gotgbot.AnswerCallbackQueryOpts{
+			Text: fmt.Sprintf("You clicked %s", cb.Data),
+		},
+	)
 	if err != nil {
 		return fmt.Errorf("failed to answer callback query: %w", err)
 	}
@@ -131,22 +135,28 @@ func HandleHouseworkListActionCallback(bot *gotgbot.Bot, ctx *ext.Context) error
 		if isDateDueOrOverdue {
 			name += " » 📢"
 		}
-		keyboard = append(keyboard, []gotgbot.InlineKeyboardButton{
-			{Text: name, CallbackData: fmt.Sprintf("housework.%d.view", housework.ID)},
-		})
+		keyboard = append(
+			keyboard, []gotgbot.InlineKeyboardButton{
+				{Text: name, CallbackData: fmt.Sprintf("housework.%d.view", housework.ID)},
+			},
+		)
 	}
-	keyboard = append(keyboard, []gotgbot.InlineKeyboardButton{
-		{Text: "➕ Add new housework", CallbackData: "housework.add"},
-	})
+	keyboard = append(
+		keyboard, []gotgbot.InlineKeyboardButton{
+			{Text: "➕ Add new housework", CallbackData: "housework.add"},
+		},
+	)
 
 	inlineKeyboard := gotgbot.InlineKeyboardMarkup{
 		InlineKeyboard: keyboard,
 	}
 
 	// Reply to the user with the available commands as buttons
-	_, err = ctx.EffectiveMessage.Reply(bot, "Select a housework to view:", &gotgbot.SendMessageOpts{
-		ReplyMarkup: inlineKeyboard,
-	})
+	_, err = ctx.EffectiveMessage.Reply(
+		bot, "Select a housework to view:", &gotgbot.SendMessageOpts{
+			ReplyMarkup: inlineKeyboard,
+		},
+	)
 	if err != nil {
 		return fmt.Errorf("failed to send /housework response: %w", err)
 	}
@@ -195,7 +205,13 @@ func HandleHouseworkSelectActionCallback(bot *gotgbot.Bot, ctx *ext.Context) err
 	return nil
 }
 
-func handleHouseworkAssignToOtherAction(bot *gotgbot.Bot, ctx *ext.Context, housework models.Task, numberOfHousework int, err error) error {
+func handleHouseworkAssignToOtherAction(
+	bot *gotgbot.Bot,
+	ctx *ext.Context,
+	housework models.Task,
+	numberOfHousework int,
+	err error,
+) error {
 	svc, spreadsheetId, currentSheetName, err := handlers.GetCurrentSheetInfo()
 	if err != nil {
 		return err
@@ -239,7 +255,13 @@ func handleHouseworkAssignToOtherAction(bot *gotgbot.Bot, ctx *ext.Context, hous
 	housework.Assignee = nextAssignee
 
 	// upsert the housework
-	err = handlers.UpdateHousework(svc, spreadsheetId, currentSheetName, housework, numberOfHousework)
+	err = handlers.UpdateHousework(
+		svc,
+		spreadsheetId,
+		currentSheetName,
+		housework,
+		numberOfHousework,
+	)
 	if err != nil {
 		return err
 	}
@@ -253,7 +275,13 @@ func handleHouseworkAssignToOtherAction(bot *gotgbot.Bot, ctx *ext.Context, hous
 	return nil
 }
 
-func handleHouseworkMarkDoneAction(bot *gotgbot.Bot, ctx *ext.Context, housework models.Task, numberOfHousework int, err error) error {
+func handleHouseworkMarkDoneAction(
+	bot *gotgbot.Bot,
+	ctx *ext.Context,
+	housework models.Task,
+	numberOfHousework int,
+	err error,
+) error {
 	svc, spreadsheetId, currentSheetName, err := handlers.GetCurrentSheetInfo()
 	if err != nil {
 		return err
@@ -305,7 +333,13 @@ func handleHouseworkMarkDoneAction(bot *gotgbot.Bot, ctx *ext.Context, housework
 	housework.NextDue = nextDue
 
 	// upsert the housework
-	err = handlers.UpdateHousework(svc, spreadsheetId, currentSheetName, housework, numberOfHousework)
+	err = handlers.UpdateHousework(
+		svc,
+		spreadsheetId,
+		currentSheetName,
+		housework,
+		numberOfHousework,
+	)
 	if err != nil {
 		return err
 	}
@@ -319,13 +353,24 @@ func handleHouseworkMarkDoneAction(bot *gotgbot.Bot, ctx *ext.Context, housework
 	return nil
 }
 
-func handleHouseworkViewAction(bot *gotgbot.Bot, ctx *ext.Context, housework models.Task, err error) error {
+func handleHouseworkViewAction(
+	bot *gotgbot.Bot,
+	ctx *ext.Context,
+	housework models.Task,
+	err error,
+) error {
 	// Creates an inline keyboard with buttons for each command
 	inlineKeyboard := gotgbot.InlineKeyboardMarkup{
 		InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
 			{
-				{Text: "Mark as done", CallbackData: fmt.Sprintf("housework.%d.done", housework.ID)},
-				{Text: "Assign to other", CallbackData: fmt.Sprintf("housework.%d.assign", housework.ID)},
+				{
+					Text:         "Mark as done",
+					CallbackData: fmt.Sprintf("housework.%d.done", housework.ID),
+				},
+				{
+					Text:         "Assign to other",
+					CallbackData: fmt.Sprintf("housework.%d.assign", housework.ID),
+				},
 			},
 			{
 				{Text: "Update", CallbackData: fmt.Sprintf("housework.%d.update", housework.ID)},
@@ -336,10 +381,17 @@ func handleHouseworkViewAction(bot *gotgbot.Bot, ctx *ext.Context, housework mod
 
 	// Reply to the user with the available commands as buttons
 	// Show housework info
-	_, err = ctx.EffectiveMessage.Reply(bot, fmt.Sprintf("Housework info:\n---\n%s", handlers.ConvertHouseworkToMarkdownFormat(housework)), &gotgbot.SendMessageOpts{
-		ReplyMarkup: inlineKeyboard,
-		ParseMode:   "markdown",
-	})
+	_, err = ctx.EffectiveMessage.Reply(
+		bot,
+		fmt.Sprintf(
+			"Housework info:\n---\n%s",
+			handlers.ConvertHouseworkToMarkdownFormat(housework),
+		),
+		&gotgbot.SendMessageOpts{
+			ReplyMarkup: inlineKeyboard,
+			ParseMode:   "markdown",
+		},
+	)
 	return err
 }
 
@@ -365,7 +417,6 @@ func NotifyDueTasks(bot *gotgbot.Bot) {
 	if len(tasksDueToday) == 0 {
 		return
 	}
-
 	// send notification to the channel
 
 	for _, task := range tasksDueToday {
@@ -373,16 +424,23 @@ func NotifyDueTasks(bot *gotgbot.Bot) {
 		channelId := task.ChannelId
 
 		// send the message to the channel
-		_, err = bot.SendMessage(channelId, fmt.Sprintf("📢 *%s* is due today!\n*Assignee:* %s\n", task.Name, task.Assignee), &gotgbot.SendMessageOpts{
-			ParseMode: "markdown",
-			ReplyMarkup: &gotgbot.InlineKeyboardMarkup{
-				InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
-					{
-						{Text: task.Name, CallbackData: fmt.Sprintf("housework.list.%d", task.ID)},
+		_, err = bot.SendMessage(
+			channelId,
+			fmt.Sprintf("📢 *%s* is due today!\n*Assignee:* %s\n", task.Name, task.Assignee),
+			&gotgbot.SendMessageOpts{
+				ParseMode: "markdown",
+				ReplyMarkup: &gotgbot.InlineKeyboardMarkup{
+					InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
+						{
+							{
+								Text:         task.Name,
+								CallbackData: fmt.Sprintf("housework.%d.view", task.ID),
+							},
+						},
 					},
 				},
 			},
-		})
+		)
 		if err != nil {
 			logrus.Errorf("failed to send message to channel %d: %s", channelId, err.Error())
 		}

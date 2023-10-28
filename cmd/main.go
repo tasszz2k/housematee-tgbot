@@ -2,15 +2,17 @@ package main
 
 import (
 	"context"
-	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers/conversation"
-	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers/filters/callbackquery"
-	"github.com/robfig/cron/v3"
+	"log"
+	"time"
+
 	"housematee-tgbot/commands"
 	"housematee-tgbot/config"
 	"housematee-tgbot/enum"
 	services "housematee-tgbot/services/gsheets"
-	"log"
-	"time"
+
+	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers/conversation"
+	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers/filters/callbackquery"
+	"github.com/robfig/cron/v3"
 
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext"
