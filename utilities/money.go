@@ -29,9 +29,15 @@ func ParseAmount(amountStr string) string {
 // e.g., 100000 -> 100,000 ₫
 func FormatMoney(amount int) string {
 	amountStr := strconv.FormatUint(uint64(amount), 10)
-	if len(amountStr) <= 3 {
-		return amountStr + " ₫"
+	var result string
+
+	// Iterate over the amount string from the end and add commas after every third digit
+	for i := len(amountStr) - 1; i >= 0; i-- {
+		if (len(amountStr)-i-1)%3 == 0 && i != len(amountStr)-1 {
+			result = "," + result
+		}
+		result = string(amountStr[i]) + result
 	}
-	amountStr = amountStr[:len(amountStr)-3] + "," + amountStr[len(amountStr)-3:] + " ₫"
-	return amountStr
+
+	return result + " ₫"
 }
