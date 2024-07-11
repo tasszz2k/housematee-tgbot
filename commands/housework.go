@@ -5,6 +5,7 @@ import (
 	"log"
 	"strings"
 
+	"housematee-tgbot/enum"
 	"housematee-tgbot/handlers"
 	"housematee-tgbot/models"
 	"housematee-tgbot/utilities"
@@ -189,15 +190,47 @@ func HandleHouseworkSelectActionCallback(bot *gotgbot.Bot, ctx *ext.Context) err
 	switch selectedAction {
 	case HouseworkViewAction:
 		// show the housework
-		err = handleHouseworkViewAction(bot, ctx, housework, err)
+		err = handleHouseworkViewAction(bot, ctx, housework, "Housework info")
 	case HouseworkMarkDoneAction:
 		// mark the housework as done
-		err = handleHouseworkMarkDoneAction(bot, ctx, housework, numberOfHousework, err)
+		err = handleHouseworkMarkDoneAction(bot, ctx, housework, numberOfHousework)
 	case HouseworkAssignAction:
 		// assign the housework to other
-		err = handleHouseworkAssignToOtherAction(bot, ctx, housework, numberOfHousework, err)
+		err = handleHouseworkAssignToOtherAction(bot, ctx, housework, numberOfHousework)
 	}
 
+	if err != nil {
+		return fmt.Errorf("failed to send /housework response: %w", err)
+	}
+
+	return nil
+}
+
+func MarkAsDoneHouseworkByShortcut(bot *gotgbot.Bot, ctx *ext.Context) error {
+	// extract housework id from command
+	// command format: "hw[housework_id]"
+	command := getCommandFromMessage(bot, ctx.Message)
+	if !strings.HasPrefix(command, enum.HouseworkPrefix) {
+		return fmt.Errorf("invalid the marking as done housework command: %s", command)
+	}
+
+	houseworkIdStr := strings.TrimPrefix(command, enum.HouseworkPrefix)
+	houseworkId := cast.ToInt(houseworkIdStr)
+
+	// get the list of housework
+	houseworkMap, err := handlers.GetHouseworkMap()
+	if err != nil {
+		return err
+	}
+
+	// get the housework
+	housework, ok := houseworkMap[houseworkId]
+	if !ok {
+		return fmt.Errorf("housework with id %d not found", houseworkId)
+	}
+
+	numberOfHousework := len(houseworkMap)
+	err = handleHouseworkMarkDoneAction(bot, ctx, housework, numberOfHousework)
 	if err != nil {
 		return fmt.Errorf("failed to send /housework response: %w", err)
 	}
@@ -210,7 +243,6 @@ func handleHouseworkAssignToOtherAction(
 	ctx *ext.Context,
 	housework models.Task,
 	numberOfHousework int,
-	err error,
 ) error {
 	svc, spreadsheetId, currentSheetName, err := handlers.GetCurrentSheetInfo()
 	if err != nil {
@@ -267,7 +299,7 @@ func handleHouseworkAssignToOtherAction(
 	}
 
 	// show the housework
-	err = handleHouseworkViewAction(bot, ctx, housework, err)
+	err = handleHouseworkViewAction(bot, ctx, housework, "Housework is assigned to other")
 	if err != nil {
 		return err
 	}
@@ -280,7 +312,6 @@ func handleHouseworkMarkDoneAction(
 	ctx *ext.Context,
 	housework models.Task,
 	numberOfHousework int,
-	err error,
 ) error {
 	svc, spreadsheetId, currentSheetName, err := handlers.GetCurrentSheetInfo()
 	if err != nil {
@@ -345,7 +376,7 @@ func handleHouseworkMarkDoneAction(
 	}
 
 	// show the housework
-	err = handleHouseworkViewAction(bot, ctx, housework, err)
+	err = handleHouseworkViewAction(bot, ctx, housework, "Housework is updated")
 	if err != nil {
 		return err
 	}
@@ -357,7 +388,7 @@ func handleHouseworkViewAction(
 	bot *gotgbot.Bot,
 	ctx *ext.Context,
 	housework models.Task,
-	err error,
+	title string,
 ) error {
 	// Creates an inline keyboard with buttons for each command
 	inlineKeyboard := gotgbot.InlineKeyboardMarkup{
@@ -381,10 +412,11 @@ func handleHouseworkViewAction(
 
 	// Reply to the user with the available commands as buttons
 	// Show housework info
-	_, err = ctx.EffectiveMessage.Reply(
+	_, err := ctx.EffectiveMessage.Reply(
 		bot,
 		fmt.Sprintf(
-			"Housework info:\n---\n%s",
+			"%s:\n---\n%s",
+			title,
 			handlers.ConvertHouseworkToMarkdownFormat(housework),
 		),
 		&gotgbot.SendMessageOpts{

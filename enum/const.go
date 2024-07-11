@@ -18,5 +18,6 @@ func GetCommandAsText(cmd string) string {
 }
 
 const (
-	AddExpense = "add_expense"
+	AddExpense      = "add_expense"
+	HouseworkPrefix = "hw"
 )

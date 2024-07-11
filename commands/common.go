@@ -2,15 +2,17 @@ package commands
 
 import (
 	"fmt"
+	"log"
+	"strings"
+	"unicode/utf8"
+
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers/filters/message"
+
 	"housematee-tgbot/config"
 	"housematee-tgbot/enum"
-	"log"
-	"strings"
-	"unicode/utf8"
 )
 
 // Cancel cancels the conversation.
@@ -103,6 +105,15 @@ func HandleCommands(bot *gotgbot.Bot, ctx *ext.Context) error {
 	case enum.CancelCommand:
 		return Cancel(bot, ctx)
 	}
+
+	// check some shortcut commands
+	if strings.HasPrefix(command, enum.HouseworkPrefix) {
+		if !CheckPermission(bot, ctx) {
+			return nil
+		}
+		return MarkAsDoneHouseworkByShortcut(bot, ctx)
+	}
+
 	return nil
 }
 

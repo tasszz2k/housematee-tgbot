@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"time"
 
@@ -158,6 +159,16 @@ func registerCommandHandlers(dispatcher *ext.Dispatcher) {
 			commands.HandleCommands,
 		),
 	)
+
+	// hot commands for housework
+	for i := 1; i < 5; i++ {
+		dispatcher.AddHandler(
+			botHandlers.NewCommand(
+				fmt.Sprintf("%s%d", enum.HouseworkPrefix, i),
+				commands.HandleCommands,
+			),
+		)
+	}
 	//dispatcher.AddHandler(
 	//	botHandlers.NewCommand(
 	//		enum.SplitBillAddActionCommand,
@@ -221,7 +232,6 @@ func registerCommandHandlers(dispatcher *ext.Dispatcher) {
 			commands.HandleHouseworkActionCallback,
 		),
 	)
-
 	// Register conversation handlers
 
 }
@@ -233,7 +243,7 @@ func registerNotifyDueTasks(bot *gotgbot.Bot) {
 
 	// Schedule the cron job to run every day at a specific time (e.g., midnight)
 	//cronExpression := "*/1 * * * *"
-	cronExpression := "0 */12 * * *" // TODO: Read from config
+	cronExpression := "0 9 * * *" // TODO: Read from config
 	_, _ = c.AddFunc(
 		cronExpression, func() {
 			commands.NotifyDueTasks(bot)
