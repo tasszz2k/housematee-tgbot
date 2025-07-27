@@ -7,8 +7,7 @@ app = "housematee-tgbot"
 primary_region = "sin"
 
 [build]
-  builder = "paketobuildpacks/builder:base"
-  buildpacks = ["gcr.io/paketo-buildpacks/go"]
+  dockerfile = "Dockerfile"
 
 [env]
   CONFIG_READER_MODE = "secret"
