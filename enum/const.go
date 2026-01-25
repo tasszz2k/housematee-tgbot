@@ -6,6 +6,7 @@ const (
 	GSheetsCommand            = "gsheets"
 	SplitBillCommand          = "splitbill"
 	SplitBillAddActionCommand = "splitbill_add"
+	RentCommand               = "rent"
 	HouseworkCommand          = "housework"
 	SettingsCommand           = "settings"
 	FeedbackCommand           = "feedback"
@@ -20,6 +21,14 @@ func GetCommandAsText(cmd string) string {
 const (
 	AddExpense      = "add_expense"
 	HouseworkPrefix = "hw"
+)
+
+// Rent conversation states
+const (
+	RentStateTotal    = "rent_state_total"
+	RentStateElectric = "rent_state_electric"
+	RentStateWater    = "rent_state_water"
+	RentStatePayer    = "rent_state_payer"
 )
 
 // GSheets action constants

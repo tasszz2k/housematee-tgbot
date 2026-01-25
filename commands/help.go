@@ -16,13 +16,11 @@ func Help(bot *gotgbot.Bot, ctx *ext.Context) error {
 		InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
 			{
 				{Text: enum.GetCommandAsText(enum.SplitBillCommand), CallbackData: "help.splitbill"},
-				{Text: enum.GetCommandAsText(enum.HouseworkCommand), CallbackData: "help.housework"},
-				{Text: enum.GetCommandAsText(enum.GSheetsCommand), CallbackData: "help.gsheets"},
+				{Text: enum.GetCommandAsText(enum.RentCommand), CallbackData: "help.rent"},
 			},
 			{
-				{Text: enum.GetCommandAsText(enum.SettingsCommand), CallbackData: "help.settings"},
-				{Text: enum.GetCommandAsText(enum.FeedbackCommand), CallbackData: "help.feedback"},
-				{Text: enum.GetCommandAsText(enum.HelloCommand), CallbackData: "help.hello"},
+				{Text: enum.GetCommandAsText(enum.HouseworkCommand), CallbackData: "help.housework"},
+				{Text: enum.GetCommandAsText(enum.GSheetsCommand), CallbackData: "help.gsheets"},
 			},
 		},
 	}
@@ -45,43 +43,30 @@ func HandleHelpActionCallback(bot *gotgbot.Bot, ctx *ext.Context) error {
 	// Check the CallbackData to determine which button was clicked
 	switch cb.Data {
 	case "help.splitbill":
-		// Handle the /splitbill button click
 		err := SplitBill(bot, ctx)
 		if err != nil {
 			return err
 		}
+	case "help.rent":
+		// Rent uses conversation handler, show instructions instead
+		_, err := ctx.EffectiveMessage.Reply(
+			bot,
+			"*Rent*\n\nTo add monthly rent with breakdown, use the /rent command directly.",
+			&gotgbot.SendMessageOpts{ParseMode: "markdown"},
+		)
+		if err != nil {
+			return err
+		}
 	case "help.housework":
-		// Handle the /housework button click
 		err := Housework(bot, ctx)
 		if err != nil {
 			return err
 		}
 	case "help.gsheets":
-		// Handle the /gsheets button click
 		err := GSheets(bot, ctx)
 		if err != nil {
 			return err
 		}
-	case "help.settings":
-		// Handle the /settings button click
-		err := Settings(bot, ctx)
-		if err != nil {
-			return err
-		}
-	case "help.feedback":
-		// Handle the /feedback button click
-		err := Feedback(bot, ctx)
-		if err != nil {
-			return err
-		}
-	case "help.hello":
-		// Handle the /hello button click
-		err := Hello(bot, ctx)
-		if err != nil {
-			return err
-		}
-	default:
-		// Handle other button clicks (if any)
 	}
 
 	// Send a response to acknowledge the button click

@@ -226,21 +226,26 @@ func HandleExpenseAddAction(bot *gotgbot.Bot, ctx *ext.Context) (err error) {
 	}
 
 	var newExpense *models.Expense
-	// Add new record to Google Sheets and get the ID
+	// Check if this is a rent expense - redirect to /rent command
 	isRentExpense := strings.ToLower(strings.TrimSpace(expenseName)) == config.ExpenseNameRent
 	if isRentExpense {
-		// add to rent range. example: "9/2023!J5:L5"
-		newExpense, err = upsertRentExpense(expense)
+		// Redirect user to use the new /rent command for detailed breakdown
+		_, err := ctx.EffectiveMessage.Reply(
+			bot,
+			"*Rent Detected*\n\nTo add rent with detailed breakdown (electric, water, other fees), please use the /rent command.",
+			&gotgbot.SendMessageOpts{ParseMode: "markdown"},
+		)
 		if err != nil {
-			_, err := ctx.EffectiveMessage.Reply(bot, fmt.Sprintf("*Failed to Add Rent*\n\n%s", err.Error()), &gotgbot.SendMessageOpts{ParseMode: "markdown"})
 			return err
 		}
-	} else {
-		newExpense, err = addNewExpense(expense)
-		if err != nil {
-			_, err := ctx.EffectiveMessage.Reply(bot, fmt.Sprintf("*Failed to Add Expense*\n\n%s", err.Error()), &gotgbot.SendMessageOpts{ParseMode: "markdown"})
-			return err
-		}
+		return tgBotHandler.EndConversation()
+	}
+
+	// Add regular expense to Google Sheets
+	newExpense, err = addNewExpense(expense)
+	if err != nil {
+		_, err := ctx.EffectiveMessage.Reply(bot, fmt.Sprintf("*Failed to Add Expense*\n\n%s", err.Error()), &gotgbot.SendMessageOpts{ParseMode: "markdown"})
+		return err
 	}
 
 	// Reply to user with the details
@@ -254,49 +259,7 @@ func HandleExpenseAddAction(bot *gotgbot.Bot, ctx *ext.Context) (err error) {
 	return tgBotHandler.EndConversation()
 }
 
-func upsertRentExpense(expense models.Expense) (*models.Expense, error) {
-	// read spreadsheetId from config
-	svc, spreadsheetId, currentSheetName, err := GetCurrentSheetInfo()
-	if err != nil {
-		return nil, err
-	}
-
-	// get number of members
-	numberOfMembers, err := GetNumberOfMembers(svc, spreadsheetId, currentSheetName)
-
-	// get rent range
-	rentRange := currentSheetName + "!" + config.ExpenseRentReadRange
-	amount := cast.ToInt(expense.Amount)
-	average := amount / numberOfMembers
-	rentValues := [][]interface{}{
-		{
-			amount,
-			average,
-			expense.Payer,
-		},
-	}
-
-	// write rent to Google Sheets
-	_, err = svc.Update(context.TODO(), spreadsheetId, rentRange, &sheets.ValueRange{
-		Values: rentValues,
-	})
-	if err != nil {
-		logrus.Errorf("failed to update rent: %s", err.Error())
-		return nil, err
-	}
-
-	// update rent expense value
-	rentNote := "Average: " + utilities.FormatMoney(average)
-	return &models.Expense{
-		ID:           0,
-		Name:         expense.Name,
-		Amount:       utilities.FormatMoney(cast.ToInt(expense.Amount)),
-		Date:         expense.Date,
-		Payer:        expense.Payer,
-		Participants: expense.Participants,
-		Note:         rentNote,
-	}, nil
-}
+// upsertRentExpense is deprecated - use /rent command with handlers/rent.go instead
 
 func addNewExpense(expense models.Expense) (*models.Expense, error) {
 	// read spreadsheetId from config
@@ -478,18 +441,23 @@ func getBalances(svc *services.GSheets, spreadsheetId string, currentSheetName s
 }
 
 func convertBalancesDataToBalanceModel(values [][]interface{}) (balances models.Balance) {
-	// convert data to [numberOfMembers+1][5] string array
+	// convert data to [numberOfMembers][5] string array (no header row)
 	balancesArray := make([][5]string, len(values))
 	for i, row := range values {
 		for j, col := range row {
-			balancesArray[i][j] = cast.ToString(col)
+			if j < 5 {
+				balancesArray[i][j] = cast.ToString(col)
+			}
 		}
 	}
 
 	balances.Users = make(map[string]models.BalanceData)
-	// skip the first row is header
-	for i := 1; i < len(balancesArray); i++ {
+	// process all rows (no header to skip)
+	for i := 0; i < len(balancesArray); i++ {
 		username := balancesArray[i][0]
+		if username == "" {
+			continue
+		}
 		balances.Users[username] = models.BalanceData{
 			TotalPaid:    balancesArray[i][1],
 			HaveToPay:    balancesArray[i][2],
@@ -502,51 +470,34 @@ func convertBalancesDataToBalanceModel(values [][]interface{}) (balances models.
 }
 
 func renderReportMarkdown(report models.Report, balances models.Balance) string {
-	text := "*Report*\n\n"
-	text += "*Expenses*\n"
-	text += "• *Amount*: " + report.Expenses.Amount + "\n"
-	text += "• *Average*: " + report.Expenses.Average + "\n"
-	if report.Expenses.Note != "" {
-		text += "• *Note*: _" + report.Expenses.Note + "_\n\n"
-	}
-	text += "*Rent*\n"
-	if report.Rent.Amount == "" {
-		text += "• *Amount*: _not paid_\n"
-		text += "• *Average*: _not paid_\n"
+	text := "\U0001F4CA *Report*\n\n"
+
+	text += "\U0001F6D2 *Expenses*\n"
+	text += "\u2022 *Amount*: " + report.Expenses.Amount + "\n\n"
+
+	text += "\U0001F3E0 *Rent*\n"
+	if report.Rent.Amount == "" || report.Rent.Amount == "0" {
+		text += "\u2022 *Amount*: _not paid_\n"
 	} else {
-		text += "• *Amount*: " + report.Rent.Amount + "\n"
-		text += "• *Average*: " + report.Rent.Average + "\n"
-		if report.Rent.Note != "" {
-			text += "• *Note*: _" + report.Rent.Note + "_\n\n"
+		text += "\u2022 *Amount*: " + report.Rent.Amount + "\n"
+		if report.Rent.Note != "" && report.Rent.Note != "x" {
+			text += "\u2022 *Payer*: _" + report.Rent.Note + "_\n"
 		}
 	}
-	text += "*Total*\n"
-	text += "• *Amount*: " + report.Total.Amount + "\n"
-	text += "• *Average*: " + report.Total.Average + "\n"
-	if report.Total.Note != "" {
-		text += "• *Note*: _" + report.Total.Note + "_\n\n"
-	}
+	text += "\n"
 
-	text += "\n-----\n*Balances*\n\n"
-	//text += "@tasszz2k:\n"
-	//text += "• *Total Paid*: " + report.Balances["@tasszz2k"].TotalPaid + "\n"
-	//text += "• *Have to pay*: " + report.Balances["@tasszz2k"].HaveToPay + "\n"
-	//text += "• *Balance*: " + report.Balances["@tasszz2k"].Balance + "\n"
-	//text += "• *Final Balance*: " + report.Balances["@tasszz2k"].FinalBalance + "\n\n"
-	//
-	//text += "@ng0cth1nh:\n"
-	//text += "• *Total Paid*: " + report.Balances["@ng0cth1nh"].TotalPaid + "\n"
-	//text += "• *Have to pay*: " + report.Balances["@ng0cth1nh"].HaveToPay + "\n"
-	//text += "• *Balance*: " + report.Balances["@ng0cth1nh"].Balance + "\n"
-	//text += "• *Final Balance*: " + report.Balances["@ng0cth1nh"].FinalBalance + "\n"
+	text += "\U0001F4B0 *Total*\n"
+	text += "\u2022 *Amount*: " + report.Total.Amount + "\n\n"
+
+	text += "-----\n\U0001F4B3 *Balances*\n\n"
 
 	balanceMap := balances.Users
 	for username, balance := range balanceMap {
-		text += "*" + username + "*" + ":\n"
-		text += "• *Total Paid*: " + balance.TotalPaid + "\n"
-		text += "• *Have to pay*: " + balance.HaveToPay + "\n"
-		text += "• *Balance*: " + balance.Balance + "\n"
-		text += "• *Final Balance*: " + balance.FinalBalance + "\n\n"
+		text += "\U0001F464 *" + username + "*:\n"
+		text += "\u2022 *Total Paid*: " + balance.TotalPaid + "\n"
+		text += "\u2022 *Expense Balance*: " + balance.HaveToPay + "\n"
+		text += "\u2022 *Rent Balance*: " + balance.Balance + "\n"
+		text += "\u2022 *Final Balance*: " + balance.FinalBalance + "\n\n"
 	}
 
 	return text
@@ -569,10 +520,25 @@ func getReport(svc *services.GSheets, spreadsheetId string, currentSheetName str
 }
 
 func convertReportDataToReportModel(data [][]any) models.Report {
-	// convert data to [4][4] string array
-	reportArray := make([][4]string, 4)
+	// New template format (7 rows):
+	// Row 0: Header (Category, Amount, @tasszz2k, @ng0cth1nh, Payer)
+	// Row 1: Expenses
+	// Row 2: Electric
+	// Row 3: Water
+	// Row 4: Other Fees
+	// Row 5: Total Rent
+	// Row 6: Total
+
+	// convert data to [7][5] string array
+	reportArray := make([][5]string, 7)
 	for i, row := range data {
+		if i >= 7 {
+			break
+		}
 		for j, col := range row {
+			if j >= 5 {
+				break
+			}
 			reportArray[i][j] = cast.ToString(col)
 		}
 	}
@@ -581,17 +547,17 @@ func convertReportDataToReportModel(data [][]any) models.Report {
 		Expenses: models.ReportData{
 			Amount:  reportArray[1][1],
 			Average: reportArray[1][2],
-			Note:    reportArray[1][3],
+			Note:    reportArray[1][4], // Payer column
 		},
 		Rent: models.ReportData{
-			Amount:  reportArray[2][1],
-			Average: reportArray[2][2],
-			Note:    reportArray[2][3],
+			Amount:  reportArray[5][1], // Total Rent row
+			Average: reportArray[5][2],
+			Note:    reportArray[5][4], // Payer column
 		},
 		Total: models.ReportData{
-			Amount:  reportArray[3][1],
-			Average: reportArray[3][2],
-			Note:    reportArray[3][3],
+			Amount:  reportArray[6][1], // Total row
+			Average: reportArray[6][2],
+			Note:    reportArray[6][4],
 		},
 	}
 }
@@ -606,6 +572,6 @@ func getBalancesReadRange(currentSheetName string, numberOfMembers int) string {
 		currentSheetName,
 		config.BalanceStartCell,
 		config.BalanceEndCol,
-		config.BalanceStartRow+numberOfMembers,
+		config.BalanceStartRow+numberOfMembers-1,
 	)
 }

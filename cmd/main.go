@@ -160,6 +160,7 @@ func registerCommandHandlers(dispatcher *ext.Dispatcher) {
 			commands.HandleCommands,
 		),
 	)
+	// Note: RentCommand is handled by the conversation handler below, not here
 
 	// hot commands for housework
 	for i := 1; i < 5; i++ {
@@ -198,6 +199,48 @@ func registerCommandHandlers(dispatcher *ext.Dispatcher) {
 					botHandlers.NewMessage(
 						commands.NoCommands,
 						commands.AddExpenseConversationHandler,
+					),
+				},
+			},
+			&botHandlers.ConversationOpts{
+				Exits: []ext.Handler{
+					botHandlers.NewCommand(
+						enum.CancelCommand,
+						commands.Cancel,
+					),
+				},
+				StateStorage: conversation.NewInMemoryStorage(conversation.KeyStrategySenderAndChat),
+				AllowReEntry: true,
+			},
+		),
+	)
+
+	// Register conversation handlers for the rent command
+	dispatcher.AddHandler(
+		botHandlers.NewConversation(
+			[]ext.Handler{
+				botHandlers.NewCommand(
+					enum.RentCommand,
+					commands.StartRentConversation,
+				),
+			},
+			map[string][]ext.Handler{
+				enum.RentStateTotal: {
+					botHandlers.NewMessage(
+						commands.NoCommands,
+						commands.HandleRentTotalInput,
+					),
+				},
+				enum.RentStateElectric: {
+					botHandlers.NewMessage(
+						commands.NoCommands,
+						commands.HandleRentElectricInput,
+					),
+				},
+				enum.RentStateWater: {
+					botHandlers.NewMessage(
+						commands.NoCommands,
+						commands.HandleRentWaterInput,
 					),
 				},
 			},

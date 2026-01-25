@@ -99,6 +99,7 @@ func HandleCommands(bot *gotgbot.Bot, ctx *ext.Context) error {
 			return nil
 		}
 		return StartAddSplitBill(bot, ctx)
+	// Note: RentCommand is handled by the conversation handler in main.go, not here
 	case enum.HouseworkCommand:
 		if !CheckPermission(bot, ctx) {
 			return nil

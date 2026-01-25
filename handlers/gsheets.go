@@ -63,7 +63,7 @@ func SheetExists(svc *services.GSheets, spreadsheetId string, sheetName string) 
 }
 
 // CreateNewMonthSheet creates a new sheet by copying the Template and updates Database!B2
-func CreateNewMonthSheet(newSheetName string) (*SheetInfo, error) {
+func CreateNewMonthSheet(newSheetName string, displayName string) (*SheetInfo, error) {
 	svc, spreadsheetId, _, err := GetCurrentSheetInfo()
 	if err != nil {
 		return nil, err
@@ -91,6 +91,13 @@ func CreateNewMonthSheet(newSheetName string) (*SheetInfo, error) {
 		return nil, err
 	}
 
+	// Update cell A1 in the new sheet with the display name (MM/YYYY)
+	err = updateSheetCell(svc, spreadsheetId, newSheetName, "A1", displayName)
+	if err != nil {
+		logrus.Errorf("failed to update A1 cell: %s", err.Error())
+		return nil, err
+	}
+
 	// Update Database!B2 with the new sheet name
 	err = updateCurrentSheetName(svc, spreadsheetId, newSheetName)
 	if err != nil {
@@ -111,6 +118,21 @@ func updateCurrentSheetName(svc *services.GSheets, spreadsheetId string, sheetNa
 	}
 
 	_, err := svc.Update(context.TODO(), spreadsheetId, config.CurrentSheetNameCell, valueRange)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// updateSheetCell updates a specific cell in a sheet
+func updateSheetCell(svc *services.GSheets, spreadsheetId string, sheetName string, cell string, value string) error {
+	cellRange := fmt.Sprintf("%s!%s", sheetName, cell)
+	valueRange := &sheets.ValueRange{
+		Values: [][]interface{}{{value}},
+	}
+
+	_, err := svc.Update(context.TODO(), spreadsheetId, cellRange, valueRange)
 	if err != nil {
 		return err
 	}

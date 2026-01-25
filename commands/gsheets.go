@@ -147,11 +147,13 @@ func handleGSheetsCreateAction(bot *gotgbot.Bot, ctx *ext.Context) error {
 
 // handleGSheetsConfirmCreateAction executes the sheet creation
 func handleGSheetsConfirmCreateAction(bot *gotgbot.Bot, ctx *ext.Context) error {
-	// Get the current month sheet name
+	// Get the current month sheet name (YYYY_MM for sheet name)
 	newSheetName := utilities.GetCurrentMonthSheetName()
+	// Get the display name (MM/YYYY for cell A1)
+	displayName := utilities.GetCurrentMonthDisplayName()
 
 	// Create the new sheet
-	sheetInfo, err := handlers.CreateNewMonthSheet(newSheetName)
+	sheetInfo, err := handlers.CreateNewMonthSheet(newSheetName, displayName)
 	if err != nil {
 		// Send error message to user (use HTML to avoid markdown parsing issues with special chars)
 		_, sendErr := ctx.EffectiveMessage.Reply(

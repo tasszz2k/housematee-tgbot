@@ -43,20 +43,21 @@ func GetMembers(svc *services.GSheets, spreadsheetId string, currentSheetName st
 		return nil, err
 	}
 
-	// map result to the fixed length array
+	// map result to the fixed length array (ID, Username)
 	values := make([][2]string, numberOfMembers)
 	for i := 1; i < len(membersResult.Values); i++ {
-		for j := 0; j < len(membersResult.Values[i]); j++ {
+		for j := 0; j < len(membersResult.Values[i]) && j < 2; j++ {
 			values[i-1][j] = cast.ToString(membersResult.Values[i][j])
 		}
 	}
 
-	// convert the result to a map of members with key is the member id
+	// convert the result to a slice of members
 	members := make([]models.Member, 0, numberOfMembers)
 	for _, value := range values {
 		member := models.Member{
 			ID:       cast.ToInt(value[0]),
 			Username: value[1],
+			Weight:   1, // default weight is 1
 		}
 		members = append(members, member)
 	}
