@@ -40,9 +40,10 @@ func SplitBill(bot *gotgbot.Bot, ctx *ext.Context) error {
 	// Reply to the user with the available commands as buttons
 	_, err := ctx.EffectiveMessage.Reply(
 		bot,
-		"Select a split bill action:",
+		"*Split Bill*\n\nSelect an action:",
 		&gotgbot.SendMessageOpts{
 			ReplyMarkup: inlineKeyboard,
+			ParseMode:   "markdown",
 		},
 	)
 	if err != nil {

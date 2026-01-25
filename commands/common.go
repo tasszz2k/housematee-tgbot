@@ -30,8 +30,9 @@ func logUserAction(ctx *ext.Context, action string, details string) {
 
 // Cancel cancels the conversation.
 func Cancel(b *gotgbot.Bot, ctx *ext.Context) error {
+	logUserAction(ctx, "cancel", "conversation cancelled")
 	_, err := ctx.EffectiveMessage.Reply(
-		b, "Oh, goodbye!", &gotgbot.SendMessageOpts{
+		b, "Operation cancelled.", &gotgbot.SendMessageOpts{
 			ParseMode: "html",
 		},
 	)
@@ -41,18 +42,18 @@ func Cancel(b *gotgbot.Bot, ctx *ext.Context) error {
 	return handlers.EndConversation()
 }
 
-// Todo is a simple command that replies to the user with a hello message.
+// Todo is a simple command that replies to the user with a not implemented message.
 func Todo(bot *gotgbot.Bot, ctx *ext.Context) error {
 	logUserAction(ctx, "todo", "action not implemented")
 	_, err := ctx.EffectiveMessage.Reply(
 		bot,
-		"This action is not yet implemented in this version of the bot. Stay tuned for future updates!",
+		"*Coming Soon*\n\nThis feature is not yet available. Stay tuned for updates!",
 		&gotgbot.SendMessageOpts{
-			ParseMode: "html",
+			ParseMode: "markdown",
 		},
 	)
 	if err != nil {
-		return fmt.Errorf("failed to send start message: %w", err)
+		return fmt.Errorf("failed to send todo message: %w", err)
 	}
 	return nil
 }
@@ -65,13 +66,13 @@ func NoCommands(msg *gotgbot.Message) bool {
 func ResponseNotHasPermission(bot *gotgbot.Bot, ctx *ext.Context) error {
 	_, err := ctx.EffectiveMessage.Reply(
 		bot,
-		"Sorry, you don't have permission to use this command.",
+		"*Access Denied*\n\nThis chat is not authorized to use this command.",
 		&gotgbot.SendMessageOpts{
-			ParseMode: "html",
+			ParseMode: "markdown",
 		},
 	)
 	if err != nil {
-		return fmt.Errorf("failed to send start message: %w", err)
+		return fmt.Errorf("failed to send permission denied message: %w", err)
 	}
 	return nil
 }

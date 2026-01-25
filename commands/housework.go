@@ -155,8 +155,9 @@ func HandleHouseworkListActionCallback(bot *gotgbot.Bot, ctx *ext.Context) error
 
 	// Reply to the user with the available commands as buttons
 	_, err = ctx.EffectiveMessage.Reply(
-		bot, "Select a housework to view:", &gotgbot.SendMessageOpts{
+		bot, "*Housework Tasks*\n\nSelect a task to view details:", &gotgbot.SendMessageOpts{
 			ReplyMarkup: inlineKeyboard,
+			ParseMode:   "markdown",
 		},
 	)
 	if err != nil {
@@ -501,17 +502,33 @@ func NotifyDueTasks(bot *gotgbot.Bot) {
 		// get the channel id from the task
 		channelId := task.ChannelId
 
+		// Build notification message with details
+		message := fmt.Sprintf(
+			"*%s* is due!\n\n"+
+				"*Assignee:* %s\n"+
+				"*Due date:* %s\n"+
+				"*Turns remaining:* %d",
+			task.Name,
+			task.Assignee,
+			task.NextDue,
+			task.TurnsRemaining,
+		)
+
 		// send the message to the channel
 		_, err = bot.SendMessage(
 			channelId,
-			fmt.Sprintf("📢 *%s* is due today!\n*Assignee:* %s\n", task.Name, task.Assignee),
+			message,
 			&gotgbot.SendMessageOpts{
 				ParseMode: "markdown",
 				ReplyMarkup: &gotgbot.InlineKeyboardMarkup{
 					InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
 						{
 							{
-								Text:         task.Name,
+								Text:         "Mark as done",
+								CallbackData: fmt.Sprintf("housework.%d.done", task.ID),
+							},
+							{
+								Text:         "View details",
 								CallbackData: fmt.Sprintf("housework.%d.view", task.ID),
 							},
 						},
@@ -520,7 +537,18 @@ func NotifyDueTasks(bot *gotgbot.Bot) {
 			},
 		)
 		if err != nil {
-			logrus.Errorf("failed to send message to channel %d: %s", channelId, err.Error())
+			logrus.WithFields(logrus.Fields{
+				"channel_id": channelId,
+				"task_id":    task.ID,
+				"task_name":  task.Name,
+			}).Errorf("failed to send notification: %s", err.Error())
+		} else {
+			logrus.WithFields(logrus.Fields{
+				"channel_id": channelId,
+				"task_id":    task.ID,
+				"task_name":  task.Name,
+				"assignee":   task.Assignee,
+			}).Info("sent due task notification")
 		}
 	}
 }

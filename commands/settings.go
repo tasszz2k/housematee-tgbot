@@ -9,10 +9,8 @@ import (
 
 func Settings(bot *gotgbot.Bot, ctx *ext.Context) error {
 	logUserAction(ctx, "settings", "command called")
-	// Sample logic for /settings command
-	// You can customize this logic based on your requirements
-	_, err := ctx.EffectiveMessage.Reply(bot, "Settings customization is not yet implemented in this version of the bot. Stay tuned for future updates!", &gotgbot.SendMessageOpts{
-		ParseMode: "html",
+	_, err := ctx.EffectiveMessage.Reply(bot, "*Settings*\n\nSettings customization is coming soon. Stay tuned for updates!", &gotgbot.SendMessageOpts{
+		ParseMode: "markdown",
 	})
 	if err != nil {
 		return fmt.Errorf("failed to send /settings response: %w", err)

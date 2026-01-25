@@ -28,8 +28,9 @@ func Help(bot *gotgbot.Bot, ctx *ext.Context) error {
 	}
 
 	// Reply to the user with the available commands as buttons
-	_, err := ctx.EffectiveMessage.Reply(bot, "Here are the available commands:", &gotgbot.SendMessageOpts{
+	_, err := ctx.EffectiveMessage.Reply(bot, "*Help*\n\nSelect a command to get started:", &gotgbot.SendMessageOpts{
 		ReplyMarkup: inlineKeyboard,
+		ParseMode:   "markdown",
 	})
 	if err != nil {
 		return fmt.Errorf("failed to send /help response: %w", err)

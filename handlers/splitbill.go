@@ -19,10 +19,10 @@ import (
 func HandleSplitBillViewAction(bot *gotgbot.Bot, ctx *ext.Context) error {
 	readRange, err := getLast5ExpenseReadRange()
 	if err != nil {
-		_, err := ctx.EffectiveMessage.Reply(bot, err.Error(), nil)
+		_, err := ctx.EffectiveMessage.Reply(bot, fmt.Sprintf("*Error*\n\n%s", err.Error()), &gotgbot.SendMessageOpts{ParseMode: "markdown"})
 		return err
 	} else if readRange == "" { // no data found
-		_, err := ctx.EffectiveMessage.Reply(bot, "No data found.", nil)
+		_, err := ctx.EffectiveMessage.Reply(bot, "*No Expenses*\n\nNo expenses recorded yet. Use *Add* to create your first expense.", &gotgbot.SendMessageOpts{ParseMode: "markdown"})
 		return err
 	}
 
@@ -30,13 +30,13 @@ func HandleSplitBillViewAction(bot *gotgbot.Bot, ctx *ext.Context) error {
 	svc := services.GetGSheetsSvc()
 	resp, err := svc.Get(context.TODO(), spreadsheetId, readRange)
 	if err != nil {
-		_, err := ctx.EffectiveMessage.Reply(bot, err.Error(), nil)
+		_, err := ctx.EffectiveMessage.Reply(bot, fmt.Sprintf("*Error*\n\n%s", err.Error()), &gotgbot.SendMessageOpts{ParseMode: "markdown"})
 		return err
 	}
 
 	// convert resp to models.Expense array
 	if len(resp.Values) == 0 {
-		_, err := ctx.EffectiveMessage.Reply(bot, "No data found.", nil)
+		_, err := ctx.EffectiveMessage.Reply(bot, "*No Expenses*\n\nNo expenses recorded yet. Use *Add* to create your first expense.", &gotgbot.SendMessageOpts{ParseMode: "markdown"})
 		return err
 	}
 
@@ -71,7 +71,7 @@ func HandleSplitBillViewAction(bot *gotgbot.Bot, ctx *ext.Context) error {
 	//                | 2  | ...          | ...    | ...  | ...   |
 
 	// Create a Markdown-formatted list with bold keys
-	markdownList := "*Here are the last 5 expenses:*\n---\n"
+	markdownList := "*Recent Expenses*\n\n"
 
 	// Iterate over the expenses and format them as list items
 	for _, expense := range expenses {
@@ -186,8 +186,8 @@ func HandleExpenseAddAction(bot *gotgbot.Bot, ctx *ext.Context) (err error) {
 	if len(input) < 2 {
 		_, err := ctx.EffectiveMessage.Reply(
 			bot,
-			"Please provide at least the expense name and amount.",
-			nil,
+			"*Invalid Input*\n\nPlease provide at least the expense name and amount.",
+			&gotgbot.SendMessageOpts{ParseMode: "markdown"},
 		)
 		return err
 	}
@@ -212,7 +212,7 @@ func HandleExpenseAddAction(bot *gotgbot.Bot, ctx *ext.Context) (err error) {
 
 	// validate input
 	if err := checkValidExpenseInput(expenseName, amount, dateStr, payer); err != nil {
-		_, err := ctx.EffectiveMessage.Reply(bot, err.Error(), nil)
+		_, err := ctx.EffectiveMessage.Reply(bot, fmt.Sprintf("*Validation Error*\n\n%s", err.Error()), &gotgbot.SendMessageOpts{ParseMode: "markdown"})
 		return err
 	}
 
@@ -232,19 +232,19 @@ func HandleExpenseAddAction(bot *gotgbot.Bot, ctx *ext.Context) (err error) {
 		// add to rent range. example: "9/2023!J5:L5"
 		newExpense, err = upsertRentExpense(expense)
 		if err != nil {
-			_, err := ctx.EffectiveMessage.Reply(bot, err.Error(), nil)
+			_, err := ctx.EffectiveMessage.Reply(bot, fmt.Sprintf("*Failed to Add Rent*\n\n%s", err.Error()), &gotgbot.SendMessageOpts{ParseMode: "markdown"})
 			return err
 		}
 	} else {
 		newExpense, err = addNewExpense(expense)
 		if err != nil {
-			_, err := ctx.EffectiveMessage.Reply(bot, err.Error(), nil)
+			_, err := ctx.EffectiveMessage.Reply(bot, fmt.Sprintf("*Failed to Add Expense*\n\n%s", err.Error()), &gotgbot.SendMessageOpts{ParseMode: "markdown"})
 			return err
 		}
 	}
 
 	// Reply to user with the details
-	response := convertExpenseModelToMarkdown(*newExpense)
+	response := "*Expense Added*\n\n" + convertExpenseModelToMarkdown(*newExpense)
 	_, err = ctx.EffectiveMessage.Reply(bot, response, &gotgbot.SendMessageOpts{
 		ParseMode: "Markdown",
 	})

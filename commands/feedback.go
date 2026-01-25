@@ -9,9 +9,11 @@ import (
 
 func Feedback(bot *gotgbot.Bot, ctx *ext.Context) error {
 	logUserAction(ctx, "feedback", "command called")
-	// Sample logic for /feedback command
-	// You can customize this logic based on your requirements
-	_, err := ctx.EffectiveMessage.Reply(bot, "We appreciate your feedback! Please send your suggestions and feedback to [tasszz2k@gmail.com](mailto:tasszz2k@gmail.com) to help us improve Housematee.", &gotgbot.SendMessageOpts{
+	message := "*Feedback*\n\n" +
+		"We appreciate your feedback!\n\n" +
+		"Please send your suggestions to:\n" +
+		"[tasszz2k@gmail.com](mailto:tasszz2k@gmail.com)"
+	_, err := ctx.EffectiveMessage.Reply(bot, message, &gotgbot.SendMessageOpts{
 		ParseMode: "markdown",
 	})
 	if err != nil {
