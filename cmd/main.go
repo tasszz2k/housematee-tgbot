@@ -48,29 +48,25 @@ func initTelegramBot() {
 		panic("failed to create new bot: " + err.Error())
 	}
 
-	// Create updater and dispatcher.
-	updater := ext.NewUpdater(
-		&ext.UpdaterOpts{
-			Dispatcher: ext.NewDispatcher(
-				&ext.DispatcherOpts{
-					// If a handler returns an error, log it and continue going.
-					Error: func(
-						b *gotgbot.Bot,
-						ctx *ext.Context,
-						err error,
-					) ext.DispatcherAction {
-						log.Println(
-							"an error occurred while handling update:",
-							err.Error(),
-						)
-						return ext.DispatcherActionNoop
-					},
-					MaxRoutines: ext.DefaultMaxRoutines,
-				},
-			),
+	// Create dispatcher first.
+	dispatcher := ext.NewDispatcher(&ext.DispatcherOpts{
+		// If a handler returns an error, log it and continue going.
+		Error: func(
+			b *gotgbot.Bot,
+			ctx *ext.Context,
+			err error,
+		) ext.DispatcherAction {
+			log.Println(
+				"an error occurred while handling update:",
+				err.Error(),
+			)
+			return ext.DispatcherActionNoop
 		},
-	)
-	dispatcher := updater.Dispatcher
+		MaxRoutines: ext.DefaultMaxRoutines,
+	})
+
+	// Create updater with dispatcher.
+	updater := ext.NewUpdater(dispatcher, &ext.UpdaterOpts{})
 
 	// handle commands
 	registerCommandHandlers(dispatcher)
