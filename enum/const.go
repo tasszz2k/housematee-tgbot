@@ -21,3 +21,11 @@ const (
 	AddExpense      = "add_expense"
 	HouseworkPrefix = "hw"
 )
+
+// GSheets action constants
+const (
+	GSheetsActionPrefix  = "gsheets."
+	GSheetsCreateAction  = "create"
+	GSheetsConfirmCreate = "confirm_create"
+	GSheetsCancelCreate  = "cancel_create"
+)

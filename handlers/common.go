@@ -12,6 +12,7 @@ func GetCurrentSheetInfo() (svc *services.GSheets, spreadsheetId string, current
 	spreadsheetId = config.GetAppConfig().GoogleSheets.SpreadsheetId
 
 	// get current sheet name
+	logrus.Infof("Reading current sheet from: %s, cell: %s", spreadsheetId, config.CurrentSheetNameCell)
 	currentSheetName, err = svc.GetValue(
 		context.TODO(),
 		spreadsheetId,
@@ -21,5 +22,6 @@ func GetCurrentSheetInfo() (svc *services.GSheets, spreadsheetId string, current
 		logrus.Errorf("failed to get current sheet name: %s", err.Error())
 		return
 	}
+	logrus.Infof("Current sheet name value: %s", currentSheetName)
 	return
 }

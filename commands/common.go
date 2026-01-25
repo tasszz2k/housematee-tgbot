@@ -2,7 +2,6 @@ package commands
 
 import (
 	"fmt"
-	"log"
 	"strings"
 	"unicode/utf8"
 
@@ -10,10 +9,24 @@ import (
 	"github.com/PaulSonOfLars/gotgbot/v2/ext"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers/filters/message"
+	"github.com/sirupsen/logrus"
 
 	"housematee-tgbot/config"
 	"housematee-tgbot/enum"
 )
+
+// logUserAction logs user actions with context (user_id, username, chat_id, chat_type, action)
+func logUserAction(ctx *ext.Context, action string, details string) {
+	user := ctx.EffectiveUser
+	chat := ctx.EffectiveChat
+	logrus.WithFields(logrus.Fields{
+		"user_id":   user.Id,
+		"username":  user.Username,
+		"chat_id":   chat.Id,
+		"chat_type": chat.Type,
+		"action":    action,
+	}).Info(details)
+}
 
 // Cancel cancels the conversation.
 func Cancel(b *gotgbot.Bot, ctx *ext.Context) error {
@@ -30,7 +43,7 @@ func Cancel(b *gotgbot.Bot, ctx *ext.Context) error {
 
 // Todo is a simple command that replies to the user with a hello message.
 func Todo(bot *gotgbot.Bot, ctx *ext.Context) error {
-	log.Println("/todo called")
+	logUserAction(ctx, "todo", "action not implemented")
 	_, err := ctx.EffectiveMessage.Reply(
 		bot,
 		"This action is not yet implemented in this version of the bot. Stay tuned for future updates!",
@@ -130,6 +143,12 @@ func CheckPermission(bot *gotgbot.Bot, ctx *ext.Context) bool {
 	}
 
 	if !hasPermission {
+		logrus.WithFields(logrus.Fields{
+			"user_id":   ctx.EffectiveUser.Id,
+			"username":  ctx.EffectiveUser.Username,
+			"chat_id":   channelId,
+			"chat_type": ctx.EffectiveChat.Type,
+		}).Warn("permission denied - chat not in allowed list")
 		_ = ResponseNotHasPermission(bot, ctx)
 	}
 	return hasPermission

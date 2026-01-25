@@ -9,6 +9,11 @@ func GetCurrentDate() string {
 	return time.Now().Format("02/01/2006")
 }
 
+// GetCurrentMonthSheetName returns the current month in YYYY_MM format for sheet naming
+func GetCurrentMonthSheetName() string {
+	return time.Now().Format("2006_01")
+}
+
 // AddDay add day operation
 func AddDay(dateStr string, day int) (string, error) {
 	t, err := time.Parse("02/01/2006", dateStr)

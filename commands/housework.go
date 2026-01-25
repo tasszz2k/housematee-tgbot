@@ -2,7 +2,6 @@ package commands
 
 import (
 	"fmt"
-	"log"
 	"strings"
 
 	"housematee-tgbot/enum"
@@ -32,7 +31,7 @@ const (
 
 // Housework handles the /housework command.
 func Housework(bot *gotgbot.Bot, ctx *ext.Context) error {
-	log.Println("/housework called")
+	logUserAction(ctx, "housework", "command called")
 	// show buttons for these commands
 	// - Supported commands:
 	// - /list - List all housework.
@@ -68,6 +67,7 @@ func Housework(bot *gotgbot.Bot, ctx *ext.Context) error {
 
 func HandleHouseworkActionCallback(bot *gotgbot.Bot, ctx *ext.Context) error {
 	cb := ctx.Update.CallbackQuery
+	logUserAction(ctx, "housework_callback", fmt.Sprintf("callback: %s", cb.Data))
 
 	// Check the CallbackData to determine which button was clicked
 	switch cb.Data {
@@ -121,6 +121,7 @@ func HandleHouseworkActionCallback(bot *gotgbot.Bot, ctx *ext.Context) error {
 }
 
 func HandleHouseworkListActionCallback(bot *gotgbot.Bot, ctx *ext.Context) error {
+	logUserAction(ctx, "housework_list", "listing housework tasks")
 	// get the list of housework
 	houseworkList, err := handlers.GetHouseworkMap()
 	if err != nil {
@@ -173,6 +174,8 @@ func HandleHouseworkSelectActionCallback(bot *gotgbot.Bot, ctx *ext.Context) err
 	houseworkId := cast.ToInt(houseworkIdStr)
 	selectedAction := commandElements[2]
 
+	logUserAction(ctx, "housework_select", fmt.Sprintf("task_id=%d action=%s", houseworkId, selectedAction))
+
 	// get the list of housework
 	houseworkMap, err := handlers.GetHouseworkMap()
 	if err != nil {
@@ -217,6 +220,8 @@ func MarkAsDoneHouseworkByShortcut(bot *gotgbot.Bot, ctx *ext.Context) error {
 	houseworkIdStr := strings.TrimPrefix(command, enum.HouseworkPrefix)
 	houseworkId := cast.ToInt(houseworkIdStr)
 
+	logUserAction(ctx, "housework_shortcut", fmt.Sprintf("mark_done task_id=%d", houseworkId))
+
 	// get the list of housework
 	houseworkMap, err := handlers.GetHouseworkMap()
 	if err != nil {
@@ -244,47 +249,62 @@ func handleHouseworkAssignToOtherAction(
 	housework models.Task,
 	numberOfHousework int,
 ) error {
+	logUserAction(ctx, "housework_assign", fmt.Sprintf("task_id=%d task_name=%s current_assignee=%s", housework.ID, housework.Name, housework.Assignee))
+
 	svc, spreadsheetId, currentSheetName, err := handlers.GetCurrentSheetInfo()
 	if err != nil {
 		return err
 	}
-	// get the member list
-	members, err := handlers.GetMembers(svc, spreadsheetId, currentSheetName)
+
+	// Get task weights for weighted rotation
+	weights, err := handlers.GetTaskWeights(housework.ID)
 	if err != nil {
+		logrus.WithFields(logrus.Fields{
+			"user_id":  ctx.EffectiveUser.Id,
+			"username": ctx.EffectiveUser.Username,
+			"task_id":  housework.ID,
+		}).Errorf("failed to get task weights: %s", err.Error())
 		return err
 	}
 
-	// assign to the next assignee
-	// map[username]member = [
-	// 	"username1": member1(id=1),
-	//	"username2": member2(id=2),
-	//  "username3": members3(id=3)
-	//	]
-	// case1:
-	// currentAssignee = "username1"(id=1)
-	// => nextAssignee = "username2"(id=2)
-	// case2:
-	// currentAssignee = "username3"(id=3) (= last member)
-	// => nextAssignee = "username1"(id=1)
-
-	// get the current assignee
-	currentAssignee := housework.Assignee
-	numOfMembers := len(members)
 	var nextAssignee string
-	for i, member := range members {
-		if member.Username == currentAssignee {
-			if i == numOfMembers-1 {
-				// last member
-				nextAssignee = members[0].Username
-			} else {
-				nextAssignee = members[i+1].Username
-			}
-			break
+	var nextWeight int
+
+	if len(weights) > 0 {
+		// Use weighted rotation from Task Weights
+		nextAssignee, nextWeight = handlers.FindNextAssigneeWithWeight(weights, housework.Assignee)
+	} else {
+		// Fallback to old round-robin rotation using Members list
+		members, err := handlers.GetMembers(svc, spreadsheetId, currentSheetName)
+		if err != nil {
+			return err
 		}
+		currentAssignee := housework.Assignee
+		numOfMembers := len(members)
+		for i, member := range members {
+			if member.Username == currentAssignee {
+				if i == numOfMembers-1 {
+					nextAssignee = members[0].Username
+				} else {
+					nextAssignee = members[i+1].Username
+				}
+				break
+			}
+		}
+		nextWeight = 1 // Default weight for fallback
 	}
 
-	// update only the assignee
+	// Update assignee and TurnsRemaining
+	logrus.WithFields(logrus.Fields{
+		"user_id":         ctx.EffectiveUser.Id,
+		"task_id":         housework.ID,
+		"prev_assignee":   housework.Assignee,
+		"next_assignee":   nextAssignee,
+		"turns_remaining": nextWeight,
+	}).Info("assigned to other member")
+
 	housework.Assignee = nextAssignee
+	housework.TurnsRemaining = nextWeight
 
 	// upsert the housework
 	err = handlers.UpdateHousework(
@@ -313,48 +333,74 @@ func handleHouseworkMarkDoneAction(
 	housework models.Task,
 	numberOfHousework int,
 ) error {
+	logUserAction(ctx, "housework_mark_done", fmt.Sprintf("task_id=%d task_name=%s assignee=%s turns_remaining=%d", housework.ID, housework.Name, housework.Assignee, housework.TurnsRemaining))
+
 	svc, spreadsheetId, currentSheetName, err := handlers.GetCurrentSheetInfo()
 	if err != nil {
 		return err
 	}
-	// get the member list
-	members, err := handlers.GetMembers(svc, spreadsheetId, currentSheetName)
-	if err != nil {
-		return err
-	}
 
-	// assign to the next assignee
-	// map[username]member = [
-	// 	"username1": member1(id=1),
-	//	"username2": member2(id=2),
-	//  "username3": members3(id=3)
-	//	]
-	// case1:
-	// currentAssignee = "username1"(id=1)
-	// => nextAssignee = "username2"(id=2)
-	// case2:
-	// currentAssignee = "username3"(id=3) (= last member)
-	// => nextAssignee = "username1"(id=1)
-
-	// get the current assignee
-	currentAssignee := housework.Assignee
-	numOfMembers := len(members)
-	var nextAssignee string
-	for i, member := range members {
-		if member.Username == currentAssignee {
-			if i == numOfMembers-1 {
-				// last member
-				nextAssignee = members[0].Username
-			} else {
-				nextAssignee = members[i+1].Username
-			}
-			break
+	// Check if current assignee has more turns remaining
+	if housework.TurnsRemaining > 1 {
+		// Decrement TurnsRemaining, keep same assignee
+		housework.TurnsRemaining--
+		logrus.WithFields(logrus.Fields{
+			"user_id":         ctx.EffectiveUser.Id,
+			"task_id":         housework.ID,
+			"turns_remaining": housework.TurnsRemaining,
+		}).Info("decremented turns_remaining, keeping same assignee")
+	} else {
+		// TurnsRemaining <= 1, rotate to next assignee
+		weights, err := handlers.GetTaskWeights(housework.ID)
+		if err != nil {
+			logrus.WithFields(logrus.Fields{
+				"user_id":  ctx.EffectiveUser.Id,
+				"username": ctx.EffectiveUser.Username,
+				"task_id":  housework.ID,
+			}).Errorf("failed to get task weights: %s", err.Error())
+			return err
 		}
+
+		var nextAssignee string
+		var nextWeight int
+
+		if len(weights) > 0 {
+			// Use weighted rotation from Task Weights
+			nextAssignee, nextWeight = handlers.FindNextAssigneeWithWeight(weights, housework.Assignee)
+		} else {
+			// Fallback to old round-robin rotation using Members list
+			members, err := handlers.GetMembers(svc, spreadsheetId, currentSheetName)
+			if err != nil {
+				return err
+			}
+			currentAssignee := housework.Assignee
+			numOfMembers := len(members)
+			for i, member := range members {
+				if member.Username == currentAssignee {
+					if i == numOfMembers-1 {
+						nextAssignee = members[0].Username
+					} else {
+						nextAssignee = members[i+1].Username
+					}
+					break
+				}
+			}
+			nextWeight = 1 // Default weight for fallback
+		}
+
+		logrus.WithFields(logrus.Fields{
+			"user_id":         ctx.EffectiveUser.Id,
+			"task_id":         housework.ID,
+			"prev_assignee":   housework.Assignee,
+			"next_assignee":   nextAssignee,
+			"turns_remaining": nextWeight,
+		}).Info("rotated to next assignee")
+
+		housework.Assignee = nextAssignee
+		housework.TurnsRemaining = nextWeight
 	}
 
-	// update the housework
-	housework.Assignee = nextAssignee
-
+	// Update LastDone and NextDue
 	housework.LastDone = utilities.GetCurrentDate()
 	nextDue, err := utilities.AddDay(housework.LastDone, housework.Frequency)
 	if err != nil {

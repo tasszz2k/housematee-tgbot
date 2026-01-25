@@ -2,19 +2,18 @@ package commands
 
 import (
 	"fmt"
+
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext"
 	tgBotHandler "github.com/PaulSonOfLars/gotgbot/v2/ext/handlers"
-	"github.com/sirupsen/logrus"
 	"housematee-tgbot/enum"
 	"housematee-tgbot/handlers"
-
 	"housematee-tgbot/utilities"
 )
 
 // SplitBill handles the /splitbill command.
 func SplitBill(bot *gotgbot.Bot, ctx *ext.Context) error {
-	logrus.Println("/splitbill called")
+	logUserAction(ctx, "splitbill", "command called")
 	// show buttons for these commands
 	// - Supported commands:
 	// - /add - Add a new expense to the bill.
@@ -54,6 +53,7 @@ func SplitBill(bot *gotgbot.Bot, ctx *ext.Context) error {
 
 func HandleSplitBillActionCallback(bot *gotgbot.Bot, ctx *ext.Context) error {
 	cb := ctx.Update.CallbackQuery
+	logUserAction(ctx, "splitbill_callback", fmt.Sprintf("callback: %s", cb.Data))
 
 	// Check the CallbackData to determine which button was clicked
 	switch cb.Data {
@@ -119,6 +119,7 @@ func HandleSplitBillReportActionCallback(
 }
 
 func StartAddSplitBill(bot *gotgbot.Bot, ctx *ext.Context) error {
+	logUserAction(ctx, "splitbill_add", "starting add expense flow")
 	// Prompt the user to enter the details
 	htlmText := fmt.Sprintf(
 		`Please provide the details of the expense in the following format:

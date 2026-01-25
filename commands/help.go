@@ -2,25 +2,14 @@ package commands
 
 import (
 	"fmt"
+
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext"
 	"housematee-tgbot/enum"
-	"log"
 )
 
 func Help(bot *gotgbot.Bot, ctx *ext.Context) error {
-	log.Println("/help called")
-	// show buttons for these commands
-	// - Supported commands:
-	// - /hello - A greeting command to initiate interaction with the bot.
-	// - /gsheets - Manage and interact with your Google Sheets data directly from the bot.
-	// - /splitbill - Easily split expenses with your housemates and keep track of who owes what.
-	// - /housework - Organize and delegate house chores among housemates with reminders and schedules.
-	// - /settings - Adjust bot settings, such as language, notification preferences, and more.
-	// - /feedback - Provide feedback about the bot or report issues for continuous improvement.
-	// - /help - Get a list of available commands and learn how to use the bot effectively.
-
-	log.Println("/help called")
+	logUserAction(ctx, "help", "command called")
 
 	// Create an inline keyboard with buttons for each command
 	inlineKeyboard := gotgbot.InlineKeyboardMarkup{
@@ -50,6 +39,7 @@ func Help(bot *gotgbot.Bot, ctx *ext.Context) error {
 
 func HandleHelpActionCallback(bot *gotgbot.Bot, ctx *ext.Context) error {
 	cb := ctx.Update.CallbackQuery
+	logUserAction(ctx, "help_callback", fmt.Sprintf("callback: %s", cb.Data))
 
 	// Check the CallbackData to determine which button was clicked
 	switch cb.Data {

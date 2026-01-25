@@ -3,13 +3,14 @@ package config
 import (
 	"bytes"
 	"encoding/base64"
-	"github.com/go-playground/validator/v10"
-	"github.com/spf13/viper"
-	"log"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"github.com/go-playground/validator/v10"
+	"github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 )
 
 type AppConfig struct {
@@ -102,7 +103,7 @@ func loadConfigFromFile() error {
 func loadConfigFromSecret() error {
 	encodedConfig := os.Getenv("CONFIG_SECRET")
 	if encodedConfig == "" {
-		log.Fatal("CONFIG_SECRET is empty")
+		logrus.Fatal("CONFIG_SECRET is empty")
 	}
 
 	decodedConfig, err := base64.StdEncoding.DecodeString(encodedConfig)

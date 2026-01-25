@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
 
 	"housematee-tgbot/commands"
@@ -14,6 +13,7 @@ import (
 	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers/conversation"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers/filters/callbackquery"
 	"github.com/robfig/cron/v3"
+	"github.com/sirupsen/logrus"
 
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext"
@@ -56,10 +56,12 @@ func initTelegramBot() {
 			ctx *ext.Context,
 			err error,
 		) ext.DispatcherAction {
-			log.Println(
-				"an error occurred while handling update:",
-				err.Error(),
-			)
+			logrus.WithFields(logrus.Fields{
+				"user_id":   ctx.EffectiveUser.Id,
+				"username":  ctx.EffectiveUser.Username,
+				"chat_id":   ctx.EffectiveChat.Id,
+				"chat_type": ctx.EffectiveChat.Type,
+			}).Errorf("error handling update: %s", err.Error())
 			return ext.DispatcherActionNoop
 		},
 		MaxRoutines: ext.DefaultMaxRoutines,
@@ -86,7 +88,10 @@ func initTelegramBot() {
 	if err != nil {
 		panic("failed to start polling: " + err.Error())
 	}
-	log.Printf("%s has been started...\n", bot.User.Username)
+	logrus.WithFields(logrus.Fields{
+		"bot_username": bot.User.Username,
+		"bot_id":       bot.User.Id,
+	}).Info("bot has been started")
 
 	// register cron job to notify due tasks
 	go registerNotifyDueTasks(bot)
@@ -228,7 +233,12 @@ func registerCommandHandlers(dispatcher *ext.Dispatcher) {
 			commands.HandleHouseworkActionCallback,
 		),
 	)
-	// Register conversation handlers
+	dispatcher.AddHandler(
+		botHandlers.NewCallback(
+			callbackquery.Prefix("gsheets."),
+			commands.HandleGSheetsActionCallback,
+		),
+	)
 
 }
 
