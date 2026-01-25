@@ -19,7 +19,9 @@ manage home bills, set reminders for housework, and more, all within the conveni
 ## Features
 
 - **Bill Sharing**: Easily split and manage home bills among your housemates.
-- **Housework Reminders**: Set reminders for housework tasks and keep your living space clean and organized.
+- **Rent Management**: Dedicated rent command with weighted utility sharing (electric/water split by weight, other fees split equally).
+- **Housework Reminders**: Set reminders for housework tasks with weighted member rotation support.
+- **Google Sheets Integration**: Create monthly sheets from template, automatic data sync.
 - **Customization**: Customize Housematee to suit your preferences.
 - **Feedback**: Share your feedback and suggestions with us to improve Housematee.
 
@@ -37,10 +39,11 @@ git clone https://github.com/your-username/housematee-tgbot.git
 - Use the available commands to manage bills, set reminders, and more.
 - Supported commands:
     - /splitbill - Easily split expenses with your housemates and keep track of who owes what.
-    - /splitbill_add - Add a new expenses quickly and easily.
-    - /housework - Organize and delegate house chores among housemates with reminders and schedules.
+    - /splitbill_add - Add a new expense quickly and easily.
+    - /rent - Add rent with detailed breakdown (electric, water, other fees) with weighted sharing.
+    - /housework - Organize and delegate house chores among housemates with weighted rotation.
     - /hello - A greeting command to initiate interaction with the bot.
-    - /gsheets - Manage and interact with your Google Sheets data directly from the bot.
+    - /gsheets - Manage Google Sheets: create new monthly sheets from template.
     - /settings - Adjust bot settings, such as language, notification preferences, and more.
     - /feedback - Provide feedback about the bot or report issues for continuous improvement.
     - /help - Get a list of available commands and learn how to use the bot effectively.
@@ -116,7 +119,7 @@ housematee-tgbot/
 ### Telegram chatbot
 
 - [x] Configure supported
-  commands: `/hello`, `gsheets`, `/splitbill`, `/housework`, `/settings`, `/feedback`, `/help`, ...
+  commands: `/hello`, `/gsheets`, `/splitbill`, `/splitbill_add`, `/rent`, `/housework`, `/settings`, `/feedback`, `/help`
 - [x] Add bot into group
 - [x] Configure API token
 
@@ -187,23 +190,19 @@ housematee-tgbot/
     - [x] handle `list` button:
         - show the list of housework tasks as table
           ```markdown
-            | ID | Task name | Frequency | Last done | Next due | Next assignee |
-            |:---|:----------|:----------|:----------|:---------|:--------------|
-            | 1  | ...       | ...       | ...       | ...      |...            |
-            | 2  | ...       | ...       | ...       | ...      |...            |
+            | ID | Task name | Frequency | Last done | Next due | Next assignee | Turns |
+            |:---|:----------|:----------|:----------|:---------|:--------------|:------|
+            | 1  | ...       | ...       | ...       | ...      | ...           | ...   |
           ```
         - show buttons: each task as a button, `back` (optional)
         - [x] handle `task selected` button
-            - show task details
-              ```
-                  ID: <id> 
-                  Task name: <name>
-                  Frequency: <frequency>
-                  Last done: <last done>
-                  Next due: <next due>
-                  Next assignee: <next assignee>
-              ```
-        - show buttons: `mark as done`, `remind housemates`, `back` (optional)
+            - show task details with turns remaining
+        - show buttons: `mark as done`, `assign to other`, `remind housemates`, `back`
+    - [x] handle `mark as done` button:
+        - if TurnsRemaining > 1: decrement and keep same assignee
+        - if TurnsRemaining = 1: rotate to next member based on Task Weights, set new TurnsRemaining
+    - [x] handle `assign to other` button:
+        - skip current assignee and assign to next member in rotation
     - [ ] handle `add` button:
         - user input: each on a new line: `name`, `frequency`, `last done`
           ```
@@ -213,47 +212,42 @@ housematee-tgbot/
           [next assignee]: default: current user
           ```
         - add new record to Google Sheets
-        - reply to user:
-            ```
-                Status: <status>
-                --- <show data as a row of table> ---
-                ID: <id> 
-                Task name: <name>
-                Frequency: <frequency>
-                Last done: <last done>
-                Next due: <next due>
-                Next assignee: <next assignee>
-            ```
 
-**Command: `/sgheets` handler**
+**Command: `/gsheets` handler**
 
-- [ ] show buttons: `list`, `create`, `select main sheet`, `back` (optional)
-- [ ] handle `list` button:
-    - show the list of sheets as table
-      ```markdown
-        | ID | Sheet name | Sheet ID |
-        |:---|:-----------|:---------|
-        | 1  | ...        | ...      |
-        | 2  | ...        | ...      |
-      ```
-    - show buttons: `select main sheet`, `back` (optional)
-- [ ] handle `create` button:
-    - create a new sheet with name: `Housematee - <current month>/<current year>`
-    - add new record to Google Sheets
-    - reply to user:
-        ```
-            Status: <status>
-            --- <show data as a row of table> ---
-            ID: <id> 
-            Sheet name: <name>
-            Sheet ID: <sheet id>
-        ```
-- [ ] handle `select main sheet` button:
+- [x] show buttons: `create`
+- [x] handle `create` button:
+    - show confirmation with draft sheet name (YYYY_MM format)
+    - copy Template sheet and rename to YYYY_MM
+    - update Database!B2 with new sheet name
+    - reply to user with status and sheet details
+
+**Command: `/rent` handler**
+
+- [x] Multi-step conversation flow:
+    1. Ask for total rent amount
+    2. Ask for electric bill (shared by weight)
+    3. Ask for water bill (shared by weight)
+    4. Auto-fill payer with current user
+- [x] Calculate other fees (total - electric - water)
+- [x] Write to Google Sheets:
+    - J5: Electric amount
+    - J6: Water amount
+    - J7: Other fees
+    - J8: Total rent
+    - M8: Payer username
+- [x] Per-member shares calculated by Google Sheets formulas using Weight column
+
+**Housework weighted rotation**
+
+- [x] Support weighted member rotation for tasks
+- [x] Turns Remaining column to track consecutive turns
+- [x] Task Weights configuration (Task ID, Username, Weight)
+- [x] Rotation logic: decrement turns, then rotate to next member with their weight
 
 **Command: `/help` handler**
 
-- [x] show the list of buttons for
-  help: `/hello`, `gsheets`, `/splitbill`, `/housework`, `/settings`, `/feedback`, `/help`, ...
+- [x] show the list of available commands with descriptions
 
 ## Contributing
 
