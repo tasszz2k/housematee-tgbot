@@ -1,259 +1,173 @@
 # Housematee Telegram Bot
 
-Housematee is a Telegram bot designed to make your life with housemates easier and more organized. It allows you to
-manage home bills, set reminders for housework, and more, all within the convenience of Telegram.
+> Share expenses, split rent, and manage housework with your housemates - all through Telegram.
 
-<table style="width: 100%;">
+[![Go Version](https://img.shields.io/badge/Go-1.25-00ADD8?style=flat&logo=go)](https://go.dev/)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Telegram Bot](https://img.shields.io/badge/Telegram-Bot-2CA5E0?style=flat&logo=telegram)](https://core.telegram.org/bots)
+
+<table>
   <tr>
-    <th>Commands</th>
-    <th>Housework</th>
-    <th>Split bill</th>
-  </tr>
-  <tr>
-    <td><img src="docs/commands.png" alt="Commands" width="300px"></td>
-    <td><img src="docs/housework.png" alt="Housework" width="300px"></td>
-    <td><img src="docs/split_bill.png" alt="Split bill" width="300px"></td>
+    <td><img src="docs/commands.png" alt="Commands" width="280px"></td>
+    <td><img src="docs/split_bill.png" alt="Split bill" width="280px"></td>
+    <td><img src="docs/housework.png" alt="Housework" width="280px"></td>
   </tr>
 </table>
 
+## Why Housematee?
+
+Living with housemates is great, but managing shared expenses and chores can be a headache. Housematee solves this by:
+
+- **No more "who paid for what?"** - Track every expense with full audit history
+- **Fair rent splitting** - Weighted utility sharing based on room size or agreement
+- **Rotating chores** - Automatic task rotation so everyone does their fair share
+- **All in Telegram** - No extra apps needed, works right in your group chat
+
 ## Features
 
-- **Bill Sharing**: Easily split and manage home bills among your housemates.
-- **Rent Management**: Dedicated rent command with weighted utility sharing (electric/water split by weight, other fees split equally).
-- **Housework Reminders**: Set reminders for housework tasks with weighted member rotation support.
-- **Google Sheets Integration**: Create monthly sheets from template, automatic data sync.
-- **Customization**: Customize Housematee to suit your preferences.
-- **Feedback**: Share your feedback and suggestions with us to improve Housematee.
+### Expense Tracking (`/splitbill`)
+- Add expenses with smart parsing (`100k` = 100,000)
+- View recent expenses with quick Update/Delete buttons
+- Complete audit trail - see who changed what and when
+- Monthly reports showing who owes whom
 
-## Installation
+### Rent Management (`/rent`)
+- Step-by-step rent entry (total, electric, water)
+- **Weighted splitting** - Electric/water split by member weight, other fees split equally
+- Per-person breakdown with exact amounts
 
-1. Clone the repository:
+### Housework Rotation (`/housework`)
+- Set up recurring tasks with custom frequencies
+- Automatic rotation between housemates
+- Daily reminders at 18:30 for due tasks
+- Quick shortcuts: `/hw1`, `/hw2` to mark tasks done
+
+### Google Sheets Integration
+- All data stored in your own Google Spreadsheet
+- Create monthly sheets from template
+- Full control over your data
+
+## Quick Start
+
+### 1. Add the Bot to Your Group
+Search for your bot on Telegram and add it to your housemates group.
+
+### 2. Set Up Google Sheets
+1. Copy the [sample spreadsheet](https://docs.google.com/spreadsheets/d/1a_etCpFf-B1woVM9qjLPM0Nzwox3KPm_ok2bSibdgJk/edit?usp=sharing)
+2. Configure Google Sheets API credentials
+3. Update the config with your spreadsheet ID
+
+### 3. Start Using!
+```
+/splitbill     - Manage shared expenses
+/rent          - Add monthly rent with breakdown
+/housework     - Manage and track chores
+/help          - See all commands
+```
+
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| `/splitbill` | Expense management - add, view, update, delete, report |
+| `/splitbill_add` | Quick add an expense |
+| `/rent` | Add rent with electric/water/other breakdown |
+| `/housework` | View and manage household chores |
+| `/hw1`, `/hw2` | Quick mark task 1, 2 as done |
+| `/gsheets` | Create new monthly sheet |
+| `/settings` | Toggle reminders on/off |
+| `/help` | Show all available commands |
+| `/cancel` | Cancel current operation |
+
+## How It Works
+
+### Adding an Expense
+```
+/splitbill -> Add -> Enter details:
+---
+Groceries
+150k
+25/01/2026
+@username
+```
+The bot will parse `150k` as 150,000 and auto-fill date/payer if not provided.
+
+### Rent Calculation Example
+```
+Total rent: 5,000,000
+Electric: 300,000  (split by weight)
+Water: 200,000     (split by weight)
+Other: 4,500,000   (split equally)
+
+Member weights: @alice (3), @bob (2)
+
+@alice pays: 180,000 + 120,000 + 2,250,000 = 2,550,000
+@bob pays:   120,000 + 80,000 + 2,250,000  = 2,450,000
+```
+
+### Audit Trail
+Every change is tracked:
+```
+[25/01/2026 10:30]: amount: 150,000 - by @alice
+[25/01/2026 14:15]: update amount: 160,000 - by @bob
+```
+
+## Self-Hosting
+
+### Prerequisites
+- Go 1.25+
+- Google Cloud project with Sheets API enabled
+- Telegram Bot Token (from [@BotFather](https://t.me/botfather))
+
+### Installation
 
 ```bash
-git clone https://github.com/your-username/housematee-tgbot.git
+# Clone the repository
+git clone https://github.com/tasszz2k/housematee-tgbot.git
+cd housematee-tgbot
+
+# Copy and configure
+cp config/conf.yaml.sample config/conf.yaml
+# Edit config/conf.yaml with your settings
+
+# Build and run
+go build -o housematee ./cmd/main.go
+./housematee
 ```
 
-## Usage
+### Configuration
 
-- Start a chat with Housematee bot on Telegram.
-- Use the available commands to manage bills, set reminders, and more.
-- Supported commands:
-    - /splitbill - Easily split expenses with your housemates and keep track of who owes what.
-    - /splitbill_add - Add a new expense quickly and easily.
-    - /rent - Add rent with detailed breakdown (electric, water, other fees) with weighted sharing.
-    - /housework - Organize and delegate house chores among housemates with weighted rotation.
-    - /hello - A greeting command to initiate interaction with the bot.
-    - /gsheets - Manage Google Sheets: create new monthly sheets from template.
-    - /settings - Adjust bot settings, such as language, notification preferences, and more.
-    - /feedback - Provide feedback about the bot or report issues for continuous improvement.
-    - /help - Get a list of available commands and learn how to use the bot effectively.
-- The sample spreadsheet: [here](https://docs.google.com/spreadsheets/d/1a_etCpFf-B1woVM9qjLPM0Nzwox3KPm_ok2bSibdgJk/edit?usp=sharing)
+```yaml
+telegram:
+  token: "YOUR_BOT_TOKEN"
+  allowed_channels:
+    - -1001234567890  # Your group chat ID
 
-## Project structure
-
-```plaintext
-housematee-tgbot/
-│
-├── config/
-│   ├── config.go
-│   └── config.sample.json
-│
-├── commands/
-│   ├── splitbill/
-│   │   ├── splitbill.go
-│   ├── housework/
-│   │   ├── housework.go
-│   ├── settings/
-│   │   ├── settings.go
-│   └── start.go
-│
-├── handlers/
-│   ├── splitbill_handler.go
-│   ├── housework_handler.go
-│   ├── settings_handler.go
-│   └── start_handler.go
-│
-├── models/
-│   ├── bill/
-│   │   ├── bill.go
-│   │   └── bill_helper.go
-│   ├── housework/
-│   │   ├── housework.go
-│   │   └── housework_helper.go
-│   └── user.go
-│
-├── services/
-│   ├── gsheets/
-│   │   ├── gsheets.go
-│   │   └── gsheets_helper.go
-│   └── utilities/
-│       └── utilities.go
-│
-├── cmd/
-│   └── main.go
-│
-└── README.md
-
+google_sheets:
+  spreadsheet_id: "YOUR_SPREADSHEET_ID"
+  credentials_file: "config/credentials.json"
 ```
 
-### Explanation:
+## Tech Stack
 
-1. commands/:
-    - This directory now has sub-directories for each major feature like splitbill, housework, etc. Each
-      sub-directory contains the main go file and a _helper.go file for helper functions related to that command.
-
-2. models/:
-    - Similar to commands/, it now has sub-directories for each major data model like bill and housework. Each
-      sub-directory contains the main go file and a _helper.go file for helper functions.
-
-3. services/:
-    - This is a new directory aimed at hosting services that can be used across the application. For example,
-      Google Sheets API logic can go under gsheets/.
-
-4. utilities/:
-    - This sub-directory under services/ can contain utility functions that can be used throughout the
-      application.
-
-## TODO List
-
-### Telegram chatbot
-
-- [x] Configure supported
-  commands: `/hello`, `/gsheets`, `/splitbill`, `/splitbill_add`, `/rent`, `/housework`, `/settings`, `/feedback`, `/help`
-- [x] Add bot into group
-- [x] Configure API token
-
-### Google sheets
-
-- [x] Configure Google Sheets API
-- [x] Configure Google Sheets credentials
-
-### Requirements
-
-**Handle all commands when received**
-
-- [x] reply to user if command is supported
-- [x] reply to user if command is not supported
-
-**Command: `/hello` handler**
-
-- [x] Greet user
-
-**Command: `/splitbill` handler**
-
-- [x] show the list of buttons for bill management: `add`, `view`, `update`,
-  `delete`, `report`
-    - [x] handle `add` button:
-        - user input: each on a new line: `name`, `amount`, `date`, `payer`
-          ```
-          [expense name]: default: name - current date
-          [amount]: support parse "k" -> thousand, "m" -> million
-          [date]: default: current date
-          [payer]: default: current user
-          ```
-        - add new record to Google Sheets
-        - reply to user:
-            ```
-                Status: <status>
-                --- <show data as a row of table> ---
-                ID: <id> 
-                Expense name: <name>
-                Amount: <amount>
-                Date: <date>
-                Payer: <payer>
-            ```
-    - [x] handle `view` button:
-        - show last 5 records as table
-          ```markdown
-                | ID | Expense name | Amount | Date | Payer |
-                |:---|:-------------|:-------|:-----|:------|
-                | 1  | ...          | ...    | ...  | ...   |
-                | 2  | ...          | ...    | ...  | ...   |
-            ```
-        - show buttons: `next`, `previous`, `back` (optional)
-    - [x] handle `report` button:
-        - show a report as table
-          ```markdown
-            |                               | Amount    | ***        |
-            |:------------------------------|:----------|:-----------|
-            | living expenses               | 5.000.000 | 2.500.000  |
-            | person1 paid                  | 1.000.000 | 1.500.000  |
-            | person2 paid                  | 4.000.000 | -1.500.000 |
-            | rent                          | 4.500.000 | 2.250.000  |
-            | total                         | 9.500.000 | 4.750.000  |
-            | gap= (total)/2-[person2 paid] | 3.250.000 |            |
-          ``` 
-
-**Command: `/housework` handler**
-
-- Show the list of buttons for housework management: `list`, `add`, `update`, `delete`
-    - [x] handle `list` button:
-        - show the list of housework tasks as table
-          ```markdown
-            | ID | Task name | Frequency | Last done | Next due | Next assignee | Turns |
-            |:---|:----------|:----------|:----------|:---------|:--------------|:------|
-            | 1  | ...       | ...       | ...       | ...      | ...           | ...   |
-          ```
-        - show buttons: each task as a button, `back` (optional)
-        - [x] handle `task selected` button
-            - show task details with turns remaining
-        - show buttons: `mark as done`, `assign to other`, `remind housemates`, `back`
-    - [x] handle `mark as done` button:
-        - if TurnsRemaining > 1: decrement and keep same assignee
-        - if TurnsRemaining = 1: rotate to next member based on Task Weights, set new TurnsRemaining
-    - [x] handle `assign to other` button:
-        - skip current assignee and assign to next member in rotation
-    - [ ] handle `add` button:
-        - user input: each on a new line: `name`, `frequency`, `last done`
-          ```
-          [task name]: default: name - current date
-          [frequency]: default: 1 week
-          [next due]: default: current date
-          [next assignee]: default: current user
-          ```
-        - add new record to Google Sheets
-
-**Command: `/gsheets` handler**
-
-- [x] show buttons: `create`
-- [x] handle `create` button:
-    - show confirmation with draft sheet name (YYYY_MM format)
-    - copy Template sheet and rename to YYYY_MM
-    - update Database!B2 with new sheet name
-    - reply to user with status and sheet details
-
-**Command: `/rent` handler**
-
-- [x] Multi-step conversation flow:
-    1. Ask for total rent amount
-    2. Ask for electric bill (shared by weight)
-    3. Ask for water bill (shared by weight)
-    4. Auto-fill payer with current user
-- [x] Calculate other fees (total - electric - water)
-- [x] Write to Google Sheets:
-    - J5: Electric amount
-    - J6: Water amount
-    - J7: Other fees
-    - J8: Total rent
-    - M8: Payer username
-- [x] Per-member shares calculated by Google Sheets formulas using Weight column
-
-**Housework weighted rotation**
-
-- [x] Support weighted member rotation for tasks
-- [x] Turns Remaining column to track consecutive turns
-- [x] Task Weights configuration (Task ID, Username, Weight)
-- [x] Rotation logic: decrement turns, then rotate to next member with their weight
-
-**Command: `/help` handler**
-
-- [x] show the list of available commands with descriptions
+- **Go** - Fast, reliable backend
+- **gotgbot/v2** - Telegram Bot API
+- **Google Sheets API** - Data storage
+- **Viper** - Configuration management
+- **Logrus** - Structured logging
+- **Cron** - Scheduled reminders
 
 ## Contributing
 
-Contributions to this project are welcome! Feel free to open issues, submit pull requests, or provide feedback.
+Contributions are welcome! Feel free to:
+- Open issues for bugs or feature requests
+- Submit pull requests
+- Share feedback via `/feedback` command
 
 ## License
 
-This project is licensed under the MIT License.
+MIT License - see [LICENSE](LICENSE) for details.
 
+---
+
+**Made with love for housemates everywhere.**
