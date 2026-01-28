@@ -1,0 +1,51 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Extract changelog for this version
+        id: changelog
+        run: |
+          # Extract content between [Unreleased] and the next version header
+          # If releasing a specific version, extract that version's section
+          VERSION="${{ steps.version.outputs.version }}"
+          
+          # Try to find the specific version section first
+          if grep -q "## \[${VERSION}\]" CHANGELOG.md; then
+            # Extract the specific version section
+            NOTES=$(awk "/## \[${VERSION}\]/,/## \[[0-9]/" CHANGELOG.md | head -n -1 | tail -n +2)
+          else
+            # Fall back to Unreleased section
+            NOTES=$(awk '/## \[Unreleased\]/,/## \[[0-9]/' CHANGELOG.md | head -n -1 | tail -n +2)
+          fi
+          
+          # Use heredoc for multiline output
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          echo "$NOTES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ steps.version.outputs.version }}
+          body: ${{ steps.changelog.outputs.notes }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
