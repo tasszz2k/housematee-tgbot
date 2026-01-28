@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Expense Audit Logging**: Complete audit trail for all expense operations
+  - Add: `[DD/MM/YYYY HH:mm]: amount: X ₫ - by @username`
+  - Update: `[DD/MM/YYYY HH:mm]: update amount: X ₫ - by @username`
+  - Delete: `[DD/MM/YYYY HH:mm]: deleted: name - X ₫ - by @username`
+  - All entries append to existing Note field
+
+- **Action Buttons**: Update/Delete inline buttons shown after adding or updating an expense
+  - Allows quick modification without navigating back to menu
+
+- **Settings Command** (`/settings`): Runtime configuration for bot features
+  - Housework Reminders submenu with ON/OFF toggle
+  - Thread-safe state management
+
+### Changed
+
+- **Expense Update Flow**: Simplified to amount-only update
+  - Shows current expense details
+  - Prompts for new amount only (no name/date/payer changes)
+
+- **Expense Delete**: Changed from hard delete to soft delete
+  - Keeps expense ID in the row
+  - Clears name, amount, date, payer, participants
+  - Appends deletion entry to audit log
+  - Soft-deleted expenses filtered from view/update/delete lists
+
+- **Weighted Rent Splitting**: Per-member breakdown now uses configured weights
+  - Electric/Water split by member weight
+  - Other fees split equally
+  - Fixed member data reading from correct columns (O:Q, row 4+)
+
+### Fixed
+
+- Fixed housework Note field displaying Channel ID instead of actual note
+- Fixed rent calculation showing 50/50 split despite configured weights
+- Fixed update expense message using wrong parse mode (html -> markdown)
+
 ## [1.2.0] - 2026-01-26
 
 ### Added

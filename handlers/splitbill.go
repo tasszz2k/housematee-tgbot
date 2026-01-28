@@ -3,6 +3,8 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext"
 	tgBotHandler "github.com/PaulSonOfLars/gotgbot/v2/ext/handlers"
@@ -216,13 +218,26 @@ func HandleExpenseAddAction(bot *gotgbot.Bot, ctx *ext.Context) (err error) {
 		return err
 	}
 
+	// Get username for audit log
+	username := "@" + ctx.EffectiveUser.Username
+	if ctx.EffectiveUser.Username == "" {
+		username = ctx.EffectiveUser.FirstName
+	}
+
+	// Create initial audit entry
+	formattedAmount := utilities.FormatMoney(cast.ToInt(amount))
+	initialAudit := fmt.Sprintf("[%s]: amount: %s - by %s",
+		time.Now().Format("02/01/2006 15:04"),
+		formattedAmount,
+		username)
+
 	expense := models.Expense{
 		Name:         expenseName,
 		Amount:       amount,
 		Date:         dateStr,
 		Payer:        payer,
 		Participants: []string{},
-		Note:         "added from telegram bot",
+		Note:         initialAudit,
 	}
 
 	var newExpense *models.Expense
@@ -248,10 +263,21 @@ func HandleExpenseAddAction(bot *gotgbot.Bot, ctx *ext.Context) (err error) {
 		return err
 	}
 
-	// Reply to user with the details
+	// Reply to user with the details and action buttons
 	response := "*Expense Added*\n\n" + convertExpenseModelToMarkdown(*newExpense)
+
+	inlineKeyboard := gotgbot.InlineKeyboardMarkup{
+		InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
+			{
+				{Text: "Update", CallbackData: fmt.Sprintf("splitbill.update.%d", newExpense.ID)},
+				{Text: "Delete", CallbackData: fmt.Sprintf("splitbill.delete.%d", newExpense.ID)},
+			},
+		},
+	}
+
 	_, err = ctx.EffectiveMessage.Reply(bot, response, &gotgbot.SendMessageOpts{
-		ParseMode: "Markdown",
+		ParseMode:   "Markdown",
+		ReplyMarkup: inlineKeyboard,
 	})
 	if err != nil {
 		return err
@@ -574,4 +600,244 @@ func getBalancesReadRange(currentSheetName string, numberOfMembers int) string {
 		config.BalanceEndCol,
 		config.BalanceStartRow+numberOfMembers-1,
 	)
+}
+
+// GetRecentExpenses fetches the last N expenses from Google Sheets
+func GetRecentExpenses(limit int) ([]models.Expense, error) {
+	svc, spreadsheetId, currentSheetName, err := GetCurrentSheetInfo()
+	if err != nil {
+		return nil, err
+	}
+
+	nextExpenseId, err := getNextExpenseId()
+	if err != nil {
+		return nil, err
+	}
+
+	if nextExpenseId <= 1 {
+		return []models.Expense{}, nil
+	}
+
+	lastExpenseId := nextExpenseId - 1
+	lastExpenseRow := config.ExpenseStartRow + lastExpenseId
+
+	// Calculate start row (limit expenses back from last)
+	startRow := lastExpenseRow - limit + 1
+	if startRow < config.ExpenseStartRow+1 {
+		startRow = config.ExpenseStartRow + 1
+	}
+
+	readRange := fmt.Sprintf(
+		"%s!%s%d:%s%d",
+		currentSheetName,
+		config.ExpenseStartCol,
+		startRow,
+		config.ExpenseEndCol,
+		lastExpenseRow,
+	)
+
+	resp, err := svc.Get(context.TODO(), spreadsheetId, readRange)
+	if err != nil {
+		logrus.Errorf("failed to get recent expenses: %s", err.Error())
+		return nil, err
+	}
+
+	expenses := make([]models.Expense, 0, len(resp.Values))
+	for _, row := range resp.Values {
+		if len(row) < 5 {
+			continue
+		}
+		// Skip deleted expenses (empty Name)
+		name := cast.ToString(row[1])
+		if name == "" {
+			continue
+		}
+		expense := models.Expense{
+			ID:     cast.ToUint32(row[0]),
+			Name:   name,
+			Amount: cast.ToString(row[2]),
+			Date:   cast.ToString(row[3]),
+			Payer:  cast.ToString(row[4]),
+		}
+		if len(row) > 5 {
+			expense.Participants = cast.ToStringSlice(row[5])
+		}
+		if len(row) > 6 {
+			expense.Note = cast.ToString(row[6])
+		}
+		expenses = append(expenses, expense)
+	}
+
+	return expenses, nil
+}
+
+// GetExpenseById fetches a single expense by its ID
+func GetExpenseById(id int) (*models.Expense, error) {
+	svc, spreadsheetId, currentSheetName, err := GetCurrentSheetInfo()
+	if err != nil {
+		return nil, err
+	}
+
+	// Calculate row: ExpenseStartRow + id (row 4 for ID 1, row 5 for ID 2, etc.)
+	expenseRow := config.ExpenseStartRow + id
+
+	readRange := fmt.Sprintf(
+		"%s!%s%d:%s%d",
+		currentSheetName,
+		config.ExpenseStartCol,
+		expenseRow,
+		config.ExpenseEndCol,
+		expenseRow,
+	)
+
+	resp, err := svc.Get(context.TODO(), spreadsheetId, readRange)
+	if err != nil {
+		logrus.Errorf("failed to get expense by id %d: %s", id, err.Error())
+		return nil, err
+	}
+
+	if len(resp.Values) == 0 || len(resp.Values[0]) < 5 {
+		return nil, fmt.Errorf("expense with ID %d not found", id)
+	}
+
+	row := resp.Values[0]
+	expense := models.Expense{
+		ID:     cast.ToUint32(row[0]),
+		Name:   cast.ToString(row[1]),
+		Amount: cast.ToString(row[2]),
+		Date:   cast.ToString(row[3]),
+		Payer:  cast.ToString(row[4]),
+	}
+	if len(row) > 5 {
+		expense.Participants = cast.ToStringSlice(row[5])
+	}
+	if len(row) > 6 {
+		expense.Note = cast.ToString(row[6])
+	}
+
+	return &expense, nil
+}
+
+// UpdateExpenseById updates an existing expense in Google Sheets with audit logging
+func UpdateExpenseById(oldExpense, newExpense models.Expense, username string) error {
+	svc, spreadsheetId, currentSheetName, err := GetCurrentSheetInfo()
+	if err != nil {
+		return err
+	}
+
+	// Calculate row: ExpenseStartRow + id
+	expenseRow := config.ExpenseStartRow + int(newExpense.ID)
+
+	expenseRange := fmt.Sprintf(
+		"%s!%s%d:%s%d",
+		currentSheetName,
+		config.ExpenseStartCol,
+		expenseRow,
+		config.ExpenseEndCol,
+		expenseRow,
+	)
+
+	if newExpense.Participants == nil {
+		newExpense.Participants = []string{}
+	}
+
+	// Build audit entry with formatted amount
+	formattedAmount := utilities.FormatMoney(cast.ToInt(newExpense.Amount))
+	auditEntry := fmt.Sprintf("[%s]: update amount: %s - by %s",
+		time.Now().Format("02/01/2006 15:04"),
+		formattedAmount,
+		username)
+
+	// Append to existing note
+	if oldExpense.Note != "" {
+		newExpense.Note = oldExpense.Note + "\n" + auditEntry
+	} else {
+		newExpense.Note = auditEntry
+	}
+
+	expenseValues := [][]interface{}{
+		{
+			newExpense.ID,
+			newExpense.Name,
+			cast.ToInt(newExpense.Amount),
+			newExpense.Date,
+			newExpense.Payer,
+			strings.Join(newExpense.Participants, ","),
+			newExpense.Note,
+		},
+	}
+
+	_, err = svc.Update(context.TODO(), spreadsheetId, expenseRange, &sheets.ValueRange{
+		Values: expenseValues,
+	})
+	if err != nil {
+		logrus.Errorf("failed to update expense id %d: %s", newExpense.ID, err.Error())
+		return err
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"expense_id": newExpense.ID,
+		"name":       newExpense.Name,
+		"amount":     newExpense.Amount,
+		"updated_by": username,
+	}).Info("expense updated with audit log")
+
+	return nil
+}
+
+// DeleteExpenseById performs a soft delete: keeps ID, clears other fields, appends deletion entry to audit log
+func DeleteExpenseById(id int, name string, amount string, existingNote string, username string) error {
+	svc, spreadsheetId, currentSheetName, err := GetCurrentSheetInfo()
+	if err != nil {
+		return err
+	}
+
+	// Calculate row: ExpenseStartRow + id
+	expenseRow := config.ExpenseStartRow + id
+
+	expenseRange := fmt.Sprintf(
+		"%s!%s%d:%s%d",
+		currentSheetName,
+		config.ExpenseStartCol,
+		expenseRow,
+		config.ExpenseEndCol,
+		expenseRow,
+	)
+
+	// Build deletion audit entry
+	deletionEntry := fmt.Sprintf("[%s]: deleted: %s - %s - by %s",
+		time.Now().Format("02/01/2006 15:04"),
+		name,
+		amount,
+		username)
+
+	// Append to existing audit log
+	var finalNote string
+	if existingNote != "" {
+		finalNote = existingNote + "\n" + deletionEntry
+	} else {
+		finalNote = deletionEntry
+	}
+
+	// Soft delete: keep ID, clear other fields, append deletion to audit log
+	deleteValues := [][]interface{}{
+		{id, "", "", "", "", "", finalNote},
+	}
+
+	_, err = svc.Update(context.TODO(), spreadsheetId, expenseRange, &sheets.ValueRange{
+		Values: deleteValues,
+	})
+	if err != nil {
+		logrus.Errorf("failed to delete expense id %d: %s", id, err.Error())
+		return err
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"expense_id": id,
+		"name":       name,
+		"amount":     amount,
+		"deleted_by": username,
+	}).Info("expense soft deleted")
+
+	return nil
 }

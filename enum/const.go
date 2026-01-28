@@ -20,7 +20,13 @@ func GetCommandAsText(cmd string) string {
 
 const (
 	AddExpense      = "add_expense"
+	UpdateExpense   = "update_expense"
 	HouseworkPrefix = "hw"
+)
+
+// Splitbill action constants
+const (
+	SplitBillActionPrefix = "splitbill."
 )
 
 // Rent conversation states

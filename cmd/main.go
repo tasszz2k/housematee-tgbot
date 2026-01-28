@@ -179,7 +179,7 @@ func registerCommandHandlers(dispatcher *ext.Dispatcher) {
 	//)
 
 	// Register conversation handlers
-	// Register conversation handlers for the split bill
+	// Register conversation handlers for the split bill (add)
 	dispatcher.AddHandler(
 		botHandlers.NewConversation(
 			[]ext.Handler{
@@ -199,6 +199,36 @@ func registerCommandHandlers(dispatcher *ext.Dispatcher) {
 					botHandlers.NewMessage(
 						commands.NoCommands,
 						commands.AddExpenseConversationHandler,
+					),
+				},
+			},
+			&botHandlers.ConversationOpts{
+				Exits: []ext.Handler{
+					botHandlers.NewCommand(
+						enum.CancelCommand,
+						commands.Cancel,
+					),
+				},
+				StateStorage: conversation.NewInMemoryStorage(conversation.KeyStrategySenderAndChat),
+				AllowReEntry: true,
+			},
+		),
+	)
+
+	// Register conversation handlers for the split bill (update)
+	dispatcher.AddHandler(
+		botHandlers.NewConversation(
+			[]ext.Handler{
+				botHandlers.NewCallback(
+					callbackquery.Prefix("splitbill.update."),
+					commands.HandleSelectExpenseForUpdate,
+				),
+			},
+			map[string][]ext.Handler{
+				enum.UpdateExpense: {
+					botHandlers.NewMessage(
+						commands.NoCommands,
+						commands.UpdateExpenseConversationHandler,
 					),
 				},
 			},

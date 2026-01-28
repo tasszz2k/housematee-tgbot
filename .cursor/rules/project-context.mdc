@@ -114,6 +114,8 @@ Created from "Template" sheet. Contains:
 
 ### Expense Management (/splitbill)
 
+**Main Menu Actions:** Add, View, Update, Delete, Report
+
 **Add Expense Flow:**
 1. User sends: `name\namount\ndate\npayer` (date/payer optional)
 2. Parse amount (supports "k" = thousand, "m" = million)
@@ -121,8 +123,36 @@ Created from "Template" sheet. Contains:
 4. If expense name is "rent" -> redirect to /rent command
 5. Write to next row in Expenses section
 6. Increment next expense ID counter
+7. Create initial audit entry in Note: `[DD/MM/YYYY HH:mm]: amount: X ₫ - by @username`
+8. Show response with Update/Delete action buttons
 
-**View Expenses:** Returns last 5 expenses from sheet
+**View Expenses:** Returns last 5 expenses from sheet (skips soft-deleted)
+
+**Update Expense Flow:**
+1. Show last 5 expenses as selection buttons (skips soft-deleted)
+2. User selects expense -> show current values and prompt for new amount
+3. User sends new amount (amount-only update)
+4. Append audit entry to Note: `[DD/MM/YYYY HH:mm]: update amount: X ₫ - by @username`
+5. Show response with Update/Delete action buttons
+
+**Delete Expense Flow:**
+1. Show last 5 expenses as selection buttons (skips soft-deleted)
+2. User selects expense -> show confirm/cancel buttons
+3. On confirm: soft delete - keeps ID, clears other fields
+4. Append audit entry to Note: `[DD/MM/YYYY HH:mm]: deleted: name - X ₫ - by @username`
+- Soft-deleted expenses are filtered from view/update/delete lists
+
+**Audit Log Example:**
+```
+[28/01/2026 21:22]: amount: 92,000 ₫ - by @tasszz2k
+[28/01/2026 21:23]: update amount: 166,000 ₫ - by @tasszz2k
+[28/01/2026 21:23]: deleted: test 3 - 166,000 ₫ - by @tasszz2k
+```
+
+**Action Buttons:**
+After adding or updating an expense, inline buttons are shown:
+- `Update` - directly select this expense for update
+- `Delete` - directly select this expense for deletion
 
 **Report:** Reads Report section + Balance section, formats as markdown
 
@@ -270,3 +300,67 @@ BalanceStartRow  = 13
 BalanceStartCell = "I13"
 BalanceEndCol    = "M"
 ```
+
+---
+
+## Commands Reference
+
+| Command | Description | Permission |
+|---------|-------------|------------|
+| /start, /hello | Greeting message | Public |
+| /splitbill | Expense management (add/view/update/delete/report) | Protected |
+| /splitbill_add | Quick add expense | Protected |
+| /rent | Add rent with utility breakdown | Protected |
+| /housework | Task management with rotation | Protected |
+| /hw1, /hw2, ... | Quick mark task as done | Protected |
+| /gsheets | Create monthly sheets | Protected |
+| /settings | Bot settings (reminder toggle) | Protected |
+| /feedback | Send feedback | Public |
+| /help | Show command list | Protected |
+| /cancel | Cancel current conversation | Public |
+
+---
+
+## Telegram Bot Command List (BotFather Config)
+
+```
+splitbill - Easily split expenses with your housemates and keep track of who owes what.
+splitbill_add - Add a new expense quickly and easily.
+housework - Organize and delegate house chores among housemates with reminders and schedules.
+hw1 - Mark the housework as done: "Giat quan ao"
+hw2 - Mark the housework as done: "Do rac"
+rent - Add monthly rent with breakdown (electric, water, fees)
+gsheets - Manage and interact with your Google Sheets data directly from the bot.
+help - Get a list of available commands and learn how to use the bot effectively.
+settings - Configure your preferences and settings for a personalized experience.
+cancel - Cancel the current operation and return to the main menu.
+```
+
+---
+
+## Conversation States (enum/const.go)
+
+| State | Used By | Description |
+|-------|---------|-------------|
+| `add_expense` | /splitbill add | Waiting for expense details |
+| `update_expense` | /splitbill update | Waiting for updated values |
+| `rent_state_total` | /rent | Waiting for total amount |
+| `rent_state_electric` | /rent | Waiting for electric bill |
+| `rent_state_water` | /rent | Waiting for water bill |
+
+---
+
+## Callback Patterns (splitbill)
+
+| Pattern | Handler | Description |
+|---------|---------|-------------|
+| `splitbill.add` | StartAddSplitBill | Start add flow |
+| `splitbill.view` | HandleSplitBillViewAction | View recent expenses |
+| `splitbill.update` | HandleSplitBillUpdateAction | Show update list |
+| `splitbill.update.{id}` | HandleSelectExpenseForUpdate | Select expense to update |
+| `splitbill.delete` | HandleSplitBillDeleteAction | Show delete list |
+| `splitbill.delete.{id}` | HandleSelectExpenseForDelete | Select expense to delete |
+| `splitbill.delete.confirm.{id}` | HandleConfirmDelete | Confirm deletion |
+| `splitbill.delete.cancel` | HandleCancelDelete | Cancel deletion |
+| `splitbill.report` | HandleSplitBillReportAction | Show report |
+| `splitbill.back` | HandleSplitBillBack | Return to main menu |
