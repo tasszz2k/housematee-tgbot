@@ -22,17 +22,18 @@ jobs:
       - name: Extract changelog for this version
         id: changelog
         run: |
-          # Extract content between [Unreleased] and the next version header
-          # If releasing a specific version, extract that version's section
           VERSION="${{ steps.version.outputs.version }}"
           
-          # Try to find the specific version section first
+          # Extract content between version header and next version header
+          # Pattern: from "## [VERSION]" to next "## [" (exclusive)
           if grep -q "## \[${VERSION}\]" CHANGELOG.md; then
-            # Extract the specific version section
-            NOTES=$(awk "/## \[${VERSION}\]/,/## \[[0-9]/" CHANGELOG.md | head -n -1 | tail -n +2)
+            # Use sed to extract the version section
+            # 1. Find the line with [VERSION], print from there
+            # 2. Stop at the next "## [" line (but not the first one)
+            NOTES=$(sed -n "/## \[${VERSION}\]/,/## \[/p" CHANGELOG.md | sed '1d;$d')
           else
             # Fall back to Unreleased section
-            NOTES=$(awk '/## \[Unreleased\]/,/## \[[0-9]/' CHANGELOG.md | head -n -1 | tail -n +2)
+            NOTES=$(sed -n '/## \[Unreleased\]/,/## \[/p' CHANGELOG.md | sed '1d;$d')
           fi
           
           # Use heredoc for multiline output
