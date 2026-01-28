@@ -1,0 +1,218 @@
+---
+description: Housematee Telegram Bot - Complete application context and business logic
+alwaysApply: true
+---
+
+# Housematee Telegram Bot
+
+A Telegram bot for housemate management: expense tracking, rent splitting, housework rotation with Google Sheets as the data store.
+
+## Tech Stack
+
+- Go 1.25, gotgbot/v2 (Telegram), Google Sheets API
+- Viper (config), Logrus (logging), Cron (scheduler)
+
+## Architecture Overview
+
+```
+cmd/main.go         - Entry point, bot init, command registration
+commands/           - Telegram command handlers + conversation logic
+handlers/           - Business logic (read/write Google Sheets)
+models/             - Data structures
+services/gsheets/   - Google Sheets API wrapper
+config/             - Configuration + Google Sheets cell mappings
+enum/               - Constants (commands, states)
+utilities/          - Helpers (date, money parsing)
+```
+
+---
+
+## Google Sheets Structure
+
+The bot uses a single Google Spreadsheet with multiple sheets:
+
+### Database Sheet
+| Cell | Purpose |
+|------|---------|
+| B2 | Current active sheet name (e.g., "2024_01") |
+
+### Monthly Sheets (e.g., "2024_01")
+Created from "Template" sheet. Contains:
+
+**Expenses Section (Columns A-G, starting row 4):**
+| Column | Field |
+|--------|-------|
+| A | ID |
+| B | Name |
+| C | Amount |
+| D | Date |
+| E | Payer |
+| F | Participants |
+| G | Note |
+
+- Cell B2: Next expense ID counter
+
+**Report Section (I3:M9):**
+| Row | Category |
+|-----|----------|
+| 3 | Header |
+| 4 | Expenses total |
+| 5 | Electric |
+| 6 | Water |
+| 7 | Other Fees |
+| 8 | Total Rent |
+| 9 | Grand Total |
+
+**Rent Cells (bot writes to):**
+- J5: Electric amount
+- J6: Water amount
+- J7: Other fees (calculated: total - electric - water)
+- J8: Total rent
+- M8: Payer username
+
+**Balance Section (I13+):**
+Per-member: Username, TotalPaid, HaveToPay, Balance, FinalBalance
+
+**Members Section (O:P):**
+- P2: Number of members
+- O3+: Username
+- P3+: Weight (for weighted rent splitting: electric/water by weight, other fees equally)
+
+### Tasks Sheet
+| Column | Field |
+|--------|-------|
+| A | ID |
+| B | Name |
+| C | Frequency (days) |
+| D | LastDone (date) |
+| E | NextDue (date) |
+| F | Assignee (username) |
+| G | TurnsRemaining |
+| H | ChannelId |
+| I | Note |
+
+- Cell B1: Number of tasks
+
+### Task Weights Section (K:M)
+| Column | Field |
+|--------|-------|
+| K | Task ID |
+| L | Username |
+| M | Weight |
+
+---
+
+## Business Logic
+
+### Expense Management (/splitbill)
+
+**Add Expense Flow:**
+1. User sends: `name\namount\ndate\npayer` (date/payer optional)
+2. Parse amount (supports "k" = thousand, "m" = million)
+3. Default date = today, payer = @username
+4. If expense name is "rent" -> redirect to /rent command
+5. Write to next row in Expenses section
+6. Increment next expense ID counter
+
+**View Expenses:** Returns last 5 expenses from sheet
+
+**Report:** Reads Report section + Balance section, formats as markdown
+
+### Rent Management (/rent)
+
+**Conversation Flow:**
+1. Ask for total rent amount -> state: `rent_state_total`
+2. Ask for electric bill -> state: `rent_state_electric`
+3. Ask for water bill -> state: `rent_state_water`
+4. Calculate: OtherFees = Total - Electric - Water
+5. Payer = current user's @username
+
+**Weighted Splitting:**
+- Electric/Water: Split by member weight
+- Other Fees: Split equally among members
+- Formula: `memberShare = (amount * memberWeight) / totalWeight`
+
+**Writes to cells:** J5 (electric), J6 (water), J7 (other), J8 (total), M8 (payer)
+
+### Housework Management (/housework)
+
+**Task Rotation Logic:**
+- Tasks have frequency (days) and assignee
+- When marked done:
+  1. Set LastDone = today
+  2. Set NextDue = today + frequency
+  3. Rotate assignee to next member (round-robin)
+- "Assign to other" skips current assignee without updating dates
+
+**Shortcut Commands:** `/hw1`, `/hw2`, etc. mark task 1, 2 as done directly
+
+**Due Notifications:**
+- Cron runs at 18:30 daily
+- Checks all tasks where NextDue <= today
+- Sends notification to task's ChannelId with assignee mention
+
+### GSheets Management (/gsheets)
+
+**Create Monthly Sheet:**
+1. Show confirmation with draft name (YYYY_MM format)
+2. Duplicate "Template" sheet
+3. Rename to YYYY_MM
+4. Update Database!B2 with new sheet name
+
+---
+
+## Permission System
+
+- Commands check `CheckPermission(bot, ctx)` before execution
+- Validates chat ID against `config.Telegram.AllowedChannels`
+- Public commands (no permission): /hello, /start, /feedback
+- Protected: All others
+
+---
+
+## Data Models
+
+```go
+type Expense struct {
+    ID, Name, Amount, Date, Payer string
+    Participants []string
+    Note string
+}
+
+type RentData struct {
+    TotalBill, Electric, Water, OtherFees int64
+    Payer string
+    MemberShares []MemberShare  // calculated
+}
+
+type Task struct {
+    ID int
+    Name, LastDone, NextDue, Assignee, Note string
+    Frequency int       // days
+    TurnsRemaining int  // consecutive turns before rotation
+    ChannelId int64
+}
+
+type Member struct {
+    ID int
+    Username string
+    Weight int  // for weighted splitting
+}
+```
+
+---
+
+## Key Cell References (config/gsheets.go)
+
+```go
+CurrentSheetNameCell = "Database!B2"
+TemplateSheetName    = "Template"
+ExpenseStartRow      = 3
+RentElectricCell     = "J5"
+RentWaterCell        = "J6"
+RentOtherFeesCell    = "J7"
+RentTotalCell        = "J8"
+RentPayerCell        = "M8"
+TasksSheet           = "Tasks"
+NumberOfTasksCell    = "Tasks!B1"
+```

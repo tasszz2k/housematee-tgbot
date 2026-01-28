@@ -1,0 +1,75 @@
+---
+description: Telegram bot command and handler patterns
+globs: "{commands,handlers}/**/*.go"
+alwaysApply: false
+---
+
+# Telegram Bot Patterns
+
+## Command Handler Structure
+
+```go
+func CommandName(bot *gotgbot.Bot, ctx *ext.Context) error {
+    logUserAction(ctx, "command_name", "description")
+    
+    // Permission check for protected commands
+    if !CheckPermission(bot, ctx) {
+        return nil
+    }
+    
+    // Business logic
+    _, err := ctx.EffectiveMessage.Reply(bot, "message", &gotgbot.SendMessageOpts{
+        ParseMode: "markdown",
+    })
+    if err != nil {
+        return fmt.Errorf("failed to send message: %w", err)
+    }
+    return nil
+}
+```
+
+## Callback Handler Structure
+
+```go
+func HandleXxxActionCallback(bot *gotgbot.Bot, ctx *ext.Context) error {
+    cb := ctx.Update.CallbackQuery
+    action := strings.TrimPrefix(cb.Data, "prefix.")
+    
+    switch action {
+    case "action1":
+        return handleAction1(bot, ctx)
+    default:
+        return nil
+    }
+}
+```
+
+## Conversation Flows
+
+Multi-step inputs use conversation handlers with state:
+
+```go
+botHandlers.NewConversation(
+    []ext.Handler{/* entry points */},
+    map[string][]ext.Handler{
+        enum.StateName: {botHandlers.NewMessage(commands.NoCommands, handleStateInput)},
+    },
+    &botHandlers.ConversationOpts{
+        StateStorage: conversation.NewInMemoryStorage(conversation.KeyStrategySenderAndChat),
+        AllowReEntry: true,
+    },
+)
+```
+
+## Reply Formats
+
+- Use `ParseMode: "markdown"` or `ParseMode: "html"`
+- Tables: Use monospace formatting with aligned columns
+- Buttons: Use `gotgbot.InlineKeyboardMarkup` for inline actions
+
+## Adding New Commands
+
+1. Add constant to `enum/const.go`
+2. Create handler in `commands/`
+3. Register in `cmd/main.go` via `registerCommandHandlers()`
+4. Add permission check if needed

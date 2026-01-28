@@ -40,11 +40,13 @@ func GetHouseworkMap() (houseworkMap map[int]models.Task, err error) {
 		return
 	}
 
-	// map result to the fixed length array (8 columns: ID, Name, Frequency, LastDone, NextDue, Assignee, ChannelId, Note)
-	values := make([][8]string, numTasks)
+	// map result to the fixed length array (9 columns: ID, Name, Frequency, LastDone, NextDue, Assignee, TurnsRemaining, ChannelId, Note)
+	values := make([][9]string, numTasks)
 	for i := 1; i < len(result.Values); i++ {
 		for j := 0; j < len(result.Values[i]); j++ {
-			values[i-1][j] = cast.ToString(result.Values[i][j])
+			if j < 9 {
+				values[i-1][j] = cast.ToString(result.Values[i][j])
+			}
 		}
 	}
 
@@ -52,14 +54,15 @@ func GetHouseworkMap() (houseworkMap map[int]models.Task, err error) {
 	houseworkMap = make(map[int]models.Task)
 	for _, value := range values {
 		housework := models.Task{
-			ID:        cast.ToInt(value[0]),
-			Name:      value[1],
-			Frequency: cast.ToInt(value[2]),
-			LastDone:  value[3],
-			NextDue:   value[4],
-			Assignee:  value[5],
-			ChannelId: cast.ToInt64(value[6]),
-			Note:      value[7],
+			ID:             cast.ToInt(value[0]),
+			Name:           value[1],
+			Frequency:      cast.ToInt(value[2]),
+			LastDone:       value[3],
+			NextDue:        value[4],
+			Assignee:       value[5],
+			TurnsRemaining: cast.ToInt(value[6]),
+			ChannelId:      cast.ToInt64(value[7]),
+			Note:           value[8],
 		}
 		houseworkMap[housework.ID] = housework
 	}
@@ -83,6 +86,7 @@ func UpdateHousework(svc *services.GSheets, spreadsheetId string, currentSheetNa
 			housework.LastDone,
 			housework.NextDue,
 			housework.Assignee,
+			housework.TurnsRemaining,
 			housework.ChannelId,
 			housework.Note,
 		},

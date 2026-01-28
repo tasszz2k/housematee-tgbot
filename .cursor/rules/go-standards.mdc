@@ -1,0 +1,50 @@
+---
+description: Go coding standards for housematee-tgbot
+globs: "**/*.go"
+alwaysApply: false
+---
+
+# Go Coding Standards
+
+## Error Handling
+
+```go
+// Always wrap errors with context
+if err != nil {
+    return fmt.Errorf("failed to send message: %w", err)
+}
+
+// Log errors with structured fields
+logrus.WithFields(logrus.Fields{
+    "user_id":  ctx.EffectiveUser.Id,
+    "chat_id":  ctx.EffectiveChat.Id,
+}).Errorf("error: %s", err.Error())
+```
+
+## Logging
+
+- Use `logrus.WithFields()` for structured logging
+- Include context: user_id, username, chat_id, chat_type, action
+- Use `logUserAction(ctx, action, details)` for user actions
+
+## Naming Conventions
+
+- Commands: `func CommandName(bot *gotgbot.Bot, ctx *ext.Context) error`
+- Handlers: `func HandleXxxActionCallback(bot *gotgbot.Bot, ctx *ext.Context) error`
+- Constants: PascalCase in `enum/const.go`
+
+## Configuration
+
+- Access config via `config.GetAppConfig()`
+- All config fields require validation tags
+- Support both file and secret-based config loading
+
+## Google Sheets
+
+- Use `services.GetGSheetsSvc()` for sheet operations
+- Use `handlers.GetCurrentSheetInfo()` to get current sheet context
+- Always pass `context.TODO()` for non-cancellable operations
+
+## No Emojis
+
+Do not use emojis in code, comments, or log messages.

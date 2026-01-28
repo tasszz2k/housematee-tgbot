@@ -33,7 +33,7 @@ var (
 	SeparatedSheetTasksName = "Tasks"
 	TaskStartRow            = 2
 	TaskStartCol            = "A"
-	TaskEndCol              = "H" // A-H: ID, Name, Frequency, LastDone, NextDue, Assignee, ChannelId, Note
+	TaskEndCol              = "I" // A-I: ID, Name, Frequency, LastDone, NextDue, Assignee, TurnsRemaining, ChannelId, Note
 	NumberOfTasksCell       = "B1"
 	NumberOfTasksReadRange  = "Tasks!B1"
 

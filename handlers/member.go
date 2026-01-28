@@ -27,7 +27,7 @@ func GetNumberOfMembers(svc *services.GSheets, spreadsheetId string, currentShee
 }
 
 // GetMembers gets the list of members from the spreadsheet
-// return map[username]Member
+// Columns: O = Username, P = Weight
 func GetMembers(svc *services.GSheets, spreadsheetId string, currentSheetName string) ([]models.Member, error) {
 	// get number of members
 	numberOfMembers, err := GetNumberOfMembers(svc, spreadsheetId, currentSheetName)
@@ -35,31 +35,37 @@ func GetMembers(svc *services.GSheets, spreadsheetId string, currentSheetName st
 		return nil, err
 	}
 
-	// get members read range
-	membersReadRange := fmt.Sprintf("%s!%s%d:%s%d", currentSheetName, config.MembersStartCol, config.MembersStartRow, config.MembersEndCol, config.MembersStartRow+numberOfMembers)
+	// get members read range (O:P, starting from row 3, skipping header at row 2)
+	membersReadRange := fmt.Sprintf("%s!%s%d:%s%d", currentSheetName, config.MembersStartCol, config.MembersStartRow, config.MembersEndCol, config.MembersStartRow+numberOfMembers-1)
 	membersResult, err := svc.Get(context.Background(), spreadsheetId, membersReadRange)
 	if err != nil {
 		logrus.Errorf("failed to get members: %s", err.Error())
 		return nil, err
 	}
 
-	// map result to the fixed length array (ID, Username)
-	values := make([][2]string, numberOfMembers)
-	for i := 1; i < len(membersResult.Values); i++ {
-		for j := 0; j < len(membersResult.Values[i]) && j < 2; j++ {
-			values[i-1][j] = cast.ToString(membersResult.Values[i][j])
-		}
-	}
-
 	// convert the result to a slice of members
+	// Column O = Username, Column P = Weight
 	members := make([]models.Member, 0, numberOfMembers)
-	for _, value := range values {
+	for i, row := range membersResult.Values {
+		if len(row) < 2 {
+			continue
+		}
+		username := cast.ToString(row[0])
+		weight := cast.ToInt(row[1])
+		if weight == 0 {
+			weight = 1 // default weight is 1 if not set
+		}
 		member := models.Member{
-			ID:       cast.ToInt(value[0]),
-			Username: value[1],
-			Weight:   1, // default weight is 1
+			ID:       i + 1,
+			Username: username,
+			Weight:   weight,
 		}
 		members = append(members, member)
 	}
+
+	logrus.WithFields(logrus.Fields{
+		"members": members,
+	}).Debug("loaded members with weights")
+
 	return members, nil
 }
