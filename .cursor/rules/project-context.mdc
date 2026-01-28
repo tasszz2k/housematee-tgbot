@@ -55,7 +55,7 @@ Created from "Template" sheet. Contains:
 **Report Section (I3:M9):**
 | Row | Category |
 |-----|----------|
-| 3 | Header |
+| 3 | Header (Category, Amount, @user1, @user2, Payer) |
 | 4 | Expenses total |
 | 5 | Electric |
 | 6 | Water |
@@ -71,29 +71,37 @@ Created from "Template" sheet. Contains:
 - M8: Payer username
 
 **Balance Section (I13+):**
-Per-member: Username, TotalPaid, HaveToPay, Balance, FinalBalance
+| Row | Content |
+|-----|---------|
+| 11 | "Balances" label |
+| 12 | Headers (Username, TotalPaid, ExpenseBalance, RentBalance, FinalBalance) |
+| 13+ | Per-member data |
 
-**Members Section (O:P):**
-- P2: Number of members
-- O3+: Username
-- P3+: Weight (for weighted rent splitting: electric/water by weight, other fees equally)
+**Members Section (O:Q):**
+| Cell/Row | Content |
+|----------|---------|
+| P2 | Number of members |
+| Row 3 | Headers (ID, Username, Weight) |
+| O4+ | ID (1, 2, ...) |
+| P4+ | Username (e.g., @tasszz2k) |
+| Q4+ | Weight (for weighted rent splitting) |
 
-### Tasks Sheet
-| Column | Field |
-|--------|-------|
-| A | ID |
-| B | Name |
-| C | Frequency (days) |
-| D | LastDone (date) |
-| E | NextDue (date) |
-| F | Assignee (username) |
-| G | TurnsRemaining |
-| H | ChannelId |
-| I | Note |
+### Tasks Sheet (9 columns A-I)
+| Column | Field | Description |
+|--------|-------|-------------|
+| A | ID | Task identifier |
+| B | Name | Task name |
+| C | Frequency | Days between occurrences |
+| D | LastDone | Date last completed |
+| E | NextDue | Date next due |
+| F | Assignee | Current assignee username |
+| G | TurnsRemaining | Turns before rotation |
+| H | ChannelId | Telegram channel for notifications |
+| I | Note | Additional notes |
 
 - Cell B1: Number of tasks
 
-### Task Weights Section (K:M)
+### Task Weights Section (K:M on Tasks sheet)
 | Column | Field |
 |--------|-------|
 | K | Task ID |
@@ -127,17 +135,19 @@ Per-member: Username, TotalPaid, HaveToPay, Balance, FinalBalance
 4. Calculate: OtherFees = Total - Electric - Water
 5. Payer = current user's @username
 
-**Weighted Splitting:**
+**Weighted Splitting (reads from Members section O:Q):**
 - Electric/Water: Split by member weight
 - Other Fees: Split equally among members
 - Formula: `memberShare = (amount * memberWeight) / totalWeight`
 
 **Writes to cells:** J5 (electric), J6 (water), J7 (other), J8 (total), M8 (payer)
 
+**Message displays:** Summary + per-member breakdown with weighted shares
+
 ### Housework Management (/housework)
 
 **Task Rotation Logic:**
-- Tasks have frequency (days) and assignee
+- Tasks have frequency (days), assignee, and TurnsRemaining
 - When marked done:
   1. Set LastDone = today
   2. Set NextDue = today + frequency
@@ -150,6 +160,22 @@ Per-member: Username, TotalPaid, HaveToPay, Balance, FinalBalance
 - Cron runs at 18:30 daily
 - Checks all tasks where NextDue <= today
 - Sends notification to task's ChannelId with assignee mention
+- Can be toggled on/off at runtime via /settings command
+
+### Settings Management (/settings)
+
+**Main Menu:**
+- Shows available settings with current status
+- "Housework Reminders [ON/OFF]" button
+
+**Housework Reminders Submenu:**
+- Shows current status (ON/OFF)
+- Toggle button to turn on/off
+- Back button to return to main menu
+
+**Runtime State:**
+- Reminder state stored in memory (thread-safe)
+- Resets to ON on bot restart
 
 ### GSheets Management (/gsheets)
 
@@ -182,7 +208,12 @@ type Expense struct {
 type RentData struct {
     TotalBill, Electric, Water, OtherFees int64
     Payer string
-    MemberShares []MemberShare  // calculated
+    MemberShares []MemberShare  // calculated from Members weights
+}
+
+type MemberShare struct {
+    Username string
+    ElectricShare, WaterShare, OtherShare, TotalShare int64
 }
 
 type Task struct {
@@ -196,7 +227,7 @@ type Task struct {
 type Member struct {
     ID int
     Username string
-    Weight int  // for weighted splitting
+    Weight int  // for weighted rent splitting
 }
 ```
 
@@ -205,14 +236,37 @@ type Member struct {
 ## Key Cell References (config/gsheets.go)
 
 ```go
+// Database
 CurrentSheetNameCell = "Database!B2"
 TemplateSheetName    = "Template"
+
+// Expenses
 ExpenseStartRow      = 3
+ExpenseStartCol      = "A"
+ExpenseEndCol        = "G"
+
+// Rent
 RentElectricCell     = "J5"
 RentWaterCell        = "J6"
 RentOtherFeesCell    = "J7"
 RentTotalCell        = "J8"
 RentPayerCell        = "M8"
-TasksSheet           = "Tasks"
-NumberOfTasksCell    = "Tasks!B1"
+
+// Tasks (9 columns A-I)
+SeparatedSheetTasksName = "Tasks"
+TaskStartRow            = 2
+TaskStartCol            = "A"
+TaskEndCol              = "I"
+NumberOfTasksReadRange  = "Tasks!B1"
+
+// Members (3 columns O-Q, data starts row 4)
+NumberOfMembersCell = "P2"
+MembersStartRow     = 4   // Row 3 is header
+MembersStartCol     = "O"
+MembersEndCol       = "Q" // O=ID, P=Username, Q=Weight
+
+// Balances
+BalanceStartRow  = 13
+BalanceStartCell = "I13"
+BalanceEndCol    = "M"
 ```

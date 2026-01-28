@@ -282,6 +282,12 @@ func registerCommandHandlers(dispatcher *ext.Dispatcher) {
 			commands.HandleGSheetsActionCallback,
 		),
 	)
+	dispatcher.AddHandler(
+		botHandlers.NewCallback(
+			callbackquery.Prefix("settings."),
+			commands.HandleSettingsActionCallback,
+		),
+	)
 
 }
 

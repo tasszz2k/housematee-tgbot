@@ -424,6 +424,12 @@ func handleHouseworkViewAction(
 
 // NotifyDueTasks sends a notification to the channel when there are tasks due today or overdue.
 func NotifyDueTasks(bot *gotgbot.Bot) {
+	// Check if reminders are enabled
+	if !IsReminderEnabled() {
+		logrus.Debug("housework reminders are disabled, skipping notification")
+		return
+	}
+
 	// get all tasks
 	houseworkMap, err := handlers.GetHouseworkMap()
 	if err != nil {

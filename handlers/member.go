@@ -27,7 +27,7 @@ func GetNumberOfMembers(svc *services.GSheets, spreadsheetId string, currentShee
 }
 
 // GetMembers gets the list of members from the spreadsheet
-// Columns: O = Username, P = Weight
+// Columns: O = ID, P = Username, Q = Weight
 func GetMembers(svc *services.GSheets, spreadsheetId string, currentSheetName string) ([]models.Member, error) {
 	// get number of members
 	numberOfMembers, err := GetNumberOfMembers(svc, spreadsheetId, currentSheetName)
@@ -35,8 +35,10 @@ func GetMembers(svc *services.GSheets, spreadsheetId string, currentSheetName st
 		return nil, err
 	}
 
-	// get members read range (O:P, starting from row 3, skipping header at row 2)
+	// get members read range (O:Q, starting from row 4, row 3 is header)
 	membersReadRange := fmt.Sprintf("%s!%s%d:%s%d", currentSheetName, config.MembersStartCol, config.MembersStartRow, config.MembersEndCol, config.MembersStartRow+numberOfMembers-1)
+	logrus.Debugf("reading members from range: %s", membersReadRange)
+
 	membersResult, err := svc.Get(context.Background(), spreadsheetId, membersReadRange)
 	if err != nil {
 		logrus.Errorf("failed to get members: %s", err.Error())
@@ -44,19 +46,23 @@ func GetMembers(svc *services.GSheets, spreadsheetId string, currentSheetName st
 	}
 
 	// convert the result to a slice of members
-	// Column O = Username, Column P = Weight
+	// Column O = ID, Column P = Username, Column Q = Weight
 	members := make([]models.Member, 0, numberOfMembers)
-	for i, row := range membersResult.Values {
+	for _, row := range membersResult.Values {
 		if len(row) < 2 {
 			continue
 		}
-		username := cast.ToString(row[0])
-		weight := cast.ToInt(row[1])
-		if weight == 0 {
-			weight = 1 // default weight is 1 if not set
+		id := cast.ToInt(row[0])
+		username := cast.ToString(row[1])
+		weight := 1 // default weight
+		if len(row) >= 3 {
+			weight = cast.ToInt(row[2])
+			if weight == 0 {
+				weight = 1
+			}
 		}
 		member := models.Member{
-			ID:       i + 1,
+			ID:       id,
 			Username: username,
 			Weight:   weight,
 		}

@@ -37,11 +37,14 @@ var (
 	NumberOfTasksCell       = "B1"
 	NumberOfTasksReadRange  = "Tasks!B1"
 
-	// Members sheet
+	// Members sheet (O:Q)
+	// Row 2: "Members" label, count in P2
+	// Row 3: Headers (ID, Username, Weight)
+	// Row 4+: Data
 	NumberOfMembersCell = "P2"
-	MembersStartRow     = 3
+	MembersStartRow     = 4 // Data starts at row 4 (row 3 is header)
 	MembersStartCol     = "O"
-	MembersEndCol       = "P"
+	MembersEndCol       = "Q" // O=ID, P=Username, Q=Weight
 )
 
 const (
