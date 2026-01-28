@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-01-28
+
 ### Added
 
 - **Expense Audit Logging**: Complete audit trail for all expense operations
@@ -110,11 +112,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| 1.3.0 | 2026-01-28 | Expense audit logging, Update/Delete flow, Settings command |
 | 1.2.0 | 2026-01-26 | Rent command, GSheets create, Weighted task rotation |
 | 1.1.0 | 2025-10-15 | Housework and Split bill features |
 | 1.0.0 | 2025-09-01 | Initial release |
 
-[Unreleased]: https://github.com/tasszz2k/housematee-tgbot/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/tasszz2k/housematee-tgbot/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/tasszz2k/housematee-tgbot/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/tasszz2k/housematee-tgbot/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/tasszz2k/housematee-tgbot/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/tasszz2k/housematee-tgbot/releases/tag/v1.0.0
