@@ -286,6 +286,13 @@ func handleHouseworkAssignToOtherAction(
 
 	housework.Assignee = nextAssignee
 
+	// Get task weights and set TurnsRemaining for new assignee
+	taskWeights, err := handlers.GetTaskWeights(svc, spreadsheetId)
+	if err != nil {
+		logrus.Warnf("failed to get task weights, using default: %s", err.Error())
+	}
+	housework.TurnsRemaining = getWeightForUser(taskWeights, housework.ID, nextAssignee)
+
 	// upsert the housework
 	err = handlers.UpdateHousework(
 		svc,
@@ -307,6 +314,19 @@ func handleHouseworkAssignToOtherAction(
 	return nil
 }
 
+// getWeightForUser returns the weight for a user on a task, defaulting to 1 if not found
+func getWeightForUser(taskWeights map[int]map[string]int, taskID int, username string) int {
+	if taskWeights == nil {
+		return 1
+	}
+	if userWeights, ok := taskWeights[taskID]; ok {
+		if weight, ok := userWeights[username]; ok && weight > 0 {
+			return weight
+		}
+	}
+	return 1
+}
+
 func handleHouseworkMarkDoneAction(
 	bot *gotgbot.Bot,
 	ctx *ext.Context,
@@ -320,34 +340,66 @@ func handleHouseworkMarkDoneAction(
 		return err
 	}
 
-	// Round-robin rotation using Members list
+	// Get task weights for weighted rotation
+	taskWeights, err := handlers.GetTaskWeights(svc, spreadsheetId)
+	if err != nil {
+		logrus.Errorf("failed to get task weights: %s", err.Error())
+		// Continue with default behavior if weights can't be retrieved
+		taskWeights = nil
+	}
+
+	// Get Members list for rotation
 	members, err := handlers.GetMembers(svc, spreadsheetId, currentSheetName)
 	if err != nil {
 		return err
 	}
 
-	var nextAssignee string
 	currentAssignee := housework.Assignee
-	numOfMembers := len(members)
-	for i, member := range members {
-		if member.Username == currentAssignee {
-			if i == numOfMembers-1 {
-				nextAssignee = members[0].Username
-			} else {
-				nextAssignee = members[i+1].Username
+	var nextAssignee string
+	var newTurnsRemaining int
+
+	// Check if TurnsRemaining > 1
+	if housework.TurnsRemaining > 1 {
+		// Decrement TurnsRemaining, keep same assignee
+		housework.TurnsRemaining--
+		nextAssignee = currentAssignee
+		newTurnsRemaining = housework.TurnsRemaining
+
+		logrus.WithFields(logrus.Fields{
+			"user_id":          ctx.EffectiveUser.Id,
+			"task_id":          housework.ID,
+			"assignee":         currentAssignee,
+			"turns_remaining":  newTurnsRemaining,
+		}).Info("decremented turns remaining, keeping same assignee")
+	} else {
+		// Rotate to next member and set TurnsRemaining to that member's weight
+		numOfMembers := len(members)
+		for i, member := range members {
+			if member.Username == currentAssignee {
+				if i == numOfMembers-1 {
+					nextAssignee = members[0].Username
+				} else {
+					nextAssignee = members[i+1].Username
+				}
+				break
 			}
-			break
 		}
+
+		// Get weight for the next assignee
+		nextWeight := getWeightForUser(taskWeights, housework.ID, nextAssignee)
+		housework.Assignee = nextAssignee
+		housework.TurnsRemaining = nextWeight
+		newTurnsRemaining = nextWeight
+
+		logrus.WithFields(logrus.Fields{
+			"user_id":          ctx.EffectiveUser.Id,
+			"task_id":          housework.ID,
+			"prev_assignee":    currentAssignee,
+			"next_assignee":    nextAssignee,
+			"turns_remaining":  newTurnsRemaining,
+			"weight":           nextWeight,
+		}).Info("rotated to next assignee with weighted turns")
 	}
-
-	logrus.WithFields(logrus.Fields{
-		"user_id":       ctx.EffectiveUser.Id,
-		"task_id":       housework.ID,
-		"prev_assignee": housework.Assignee,
-		"next_assignee": nextAssignee,
-	}).Info("rotated to next assignee")
-
-	housework.Assignee = nextAssignee
 
 	// Update LastDone and NextDue
 	housework.LastDone = utilities.GetCurrentDate()

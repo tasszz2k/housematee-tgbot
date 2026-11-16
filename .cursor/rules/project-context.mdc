@@ -102,11 +102,14 @@ Created from "Template" sheet. Contains:
 - Cell B1: Number of tasks
 
 ### Task Weights Section (K:M on Tasks sheet)
-| Column | Field |
-|--------|-------|
-| K | Task ID |
-| L | Username |
-| M | Weight |
+| Cell/Row | Content |
+|----------|---------|
+| K1 | "Task Weights" label |
+| L1 | Number of weight entries (count) |
+| Row 2 | Headers (Task ID, Username, Weight) |
+| K3+ | Task ID |
+| L3+ | Username (e.g., @tasszz2k) |
+| M3+ | Weight (number of consecutive turns) |
 
 ---
 
@@ -176,13 +179,19 @@ After adding or updating an expense, inline buttons are shown:
 
 ### Housework Management (/housework)
 
-**Task Rotation Logic:**
+**Weighted Task Rotation Logic:**
 - Tasks have frequency (days), assignee, and TurnsRemaining
+- Each user has a weight per task (from Task Weights section K:M)
 - When marked done:
   1. Set LastDone = today
   2. Set NextDue = today + frequency
-  3. Rotate assignee to next member (round-robin)
-- "Assign to other" skips current assignee without updating dates
+  3. Check TurnsRemaining:
+     - If TurnsRemaining > 1: decrement TurnsRemaining, keep same assignee
+     - If TurnsRemaining <= 1: rotate to next member, set TurnsRemaining = new assignee's weight
+- "Assign to other" skips to next member and sets TurnsRemaining to their weight
+
+**Task Info Display:**
+Shows Name, Frequency, LastDone, NextDue, Assignee, TurnsRemaining, Note
 
 **Shortcut Commands:** `/hw1`, `/hw2`, etc. mark task 1, 2 as done directly
 
@@ -259,6 +268,12 @@ type Member struct {
     Username string
     Weight int  // for weighted rent splitting
 }
+
+type TaskWeight struct {
+    TaskID   int
+    Username string
+    Weight   int  // consecutive turns before rotation
+}
 ```
 
 ---
@@ -294,6 +309,12 @@ NumberOfMembersCell = "P2"
 MembersStartRow     = 4   // Row 3 is header
 MembersStartCol     = "O"
 MembersEndCol       = "Q" // O=ID, P=Username, Q=Weight
+
+// Task Weights (3 columns K-M on Tasks sheet, data starts row 3)
+TaskWeightsCountCell = "Tasks!L1"  // Count of weight entries
+TaskWeightsStartRow  = 3           // Row 2 is header
+TaskWeightsStartCol  = "K"
+TaskWeightsEndCol    = "M"         // K=TaskID, L=Username, M=Weight
 
 // Balances
 BalanceStartRow  = 13

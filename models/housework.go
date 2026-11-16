@@ -11,3 +11,9 @@ type Task struct {
 	ChannelId      int64  `json:"channel_id"`
 	Note           string `json:"note"`
 }
+
+type TaskWeight struct {
+	TaskID   int    `json:"task_id"`
+	Username string `json:"username"`
+	Weight   int    `json:"weight"`
+}

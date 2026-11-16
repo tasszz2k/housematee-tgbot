@@ -112,12 +112,66 @@ func ConvertHouseworkToMarkdownFormat(housework models.Task) string {
 	}
 
 	return fmt.Sprintf(
-		"*Name*: %s\n*Frequency*: %s\n*Last done*: %s\n*Next due*: %s\n*Assignee*: %s\n*Note*: %s",
+		"*Name*: %s\n*Frequency*: %s\n*Last done*: %s\n*Next due*: %s\n*Assignee*: %s\n*Turns remaining*: %d\n*Note*: %s",
 		housework.Name,
 		frequency,
 		housework.LastDone,
 		nextDue,
 		housework.Assignee,
+		housework.TurnsRemaining,
 		note,
 	)
+}
+
+// GetTaskWeights reads task weights from Google Sheets columns K:M on the Tasks sheet
+// Returns a map[int]map[string]int where the outer key is taskID and inner key is username, value is weight
+// Default weight to 1 if not specified or if parsing fails
+func GetTaskWeights(svc *services.GSheets, spreadsheetId string) (map[int]map[string]int, error) {
+	// Get the count of weight entries
+	countValue, err := svc.GetValue(context.TODO(), spreadsheetId, config.TaskWeightsCountCell)
+	if err != nil {
+		logrus.Errorf("failed to get task weights count: %s", err.Error())
+		return nil, err
+	}
+
+	count := cast.ToInt(countValue)
+	if count == 0 {
+		return make(map[int]map[string]int), nil
+	}
+
+	// Get the task weights data
+	weightsReadRange := fmt.Sprintf("%s!%s%d:%s%d", config.SeparatedSheetTasksName, config.TaskWeightsStartCol, config.TaskWeightsStartRow, config.TaskWeightsEndCol, config.TaskWeightsStartRow+count-1)
+	result, err := svc.Get(context.TODO(), spreadsheetId, weightsReadRange)
+	if err != nil {
+		logrus.Errorf("failed to get task weights: %s", err.Error())
+		return nil, err
+	}
+
+	// Build the nested map: map[taskID]map[username]weight
+	weightsMap := make(map[int]map[string]int)
+	for _, row := range result.Values {
+		if len(row) < 2 {
+			continue
+		}
+
+		taskID := cast.ToInt(row[0])
+		username := cast.ToString(row[1])
+		weight := 1 // default weight
+
+		if len(row) >= 3 {
+			parsedWeight := cast.ToInt(row[2])
+			if parsedWeight > 0 {
+				weight = parsedWeight
+			}
+		}
+
+		// Initialize inner map if it doesn't exist
+		if weightsMap[taskID] == nil {
+			weightsMap[taskID] = make(map[string]int)
+		}
+
+		weightsMap[taskID][username] = weight
+	}
+
+	return weightsMap, nil
 }

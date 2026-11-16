@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Turns Remaining Display**: Housework info messages now show "Turns remaining" field
+
+### Fixed
+
+- **Weighted Housework Rotation**: Fixed task weight reading from Google Sheets
+  - Corrected count cell reference from M1 to L1
+  - Corrected data start row from 2 to 3 (row 2 contains headers)
+  - Assignees now correctly receive their configured weight as TurnsRemaining
+
 ## [1.3.0] - 2026-01-28
 
 ### Added

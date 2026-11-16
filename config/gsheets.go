@@ -45,6 +45,15 @@ var (
 	MembersStartRow     = 4 // Data starts at row 4 (row 3 is header)
 	MembersStartCol     = "O"
 	MembersEndCol       = "Q" // O=ID, P=Username, Q=Weight
+
+	// Task Weights section (K:M on Tasks sheet)
+	// Row 1: "Task Weights" label in K1 with count in L1
+	// Row 2: Column headers (Task ID, Username, Weight)
+	// Row 3+: Data
+	TaskWeightsCountCell = "Tasks!L1"
+	TaskWeightsStartRow  = 3
+	TaskWeightsStartCol  = "K"
+	TaskWeightsEndCol    = "M"
 )
 
 const (
