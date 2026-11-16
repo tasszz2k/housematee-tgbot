@@ -63,3 +63,4 @@ __debug_bin
 config/local.yaml
 config/prod.yaml
 config/housematee-*.json
+.local/
