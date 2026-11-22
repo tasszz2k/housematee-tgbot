@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"unicode/utf8"
 
@@ -17,15 +18,9 @@ import (
 
 // logUserAction logs user actions with context (user_id, username, chat_id, chat_type, action)
 func logUserAction(ctx *ext.Context, action string, details string) {
-	user := ctx.EffectiveUser
-	chat := ctx.EffectiveChat
-	logrus.WithFields(logrus.Fields{
-		"user_id":   user.Id,
-		"username":  user.Username,
-		"chat_id":   chat.Id,
-		"chat_type": chat.Type,
-		"action":    action,
-	}).Info(details)
+	fields := ContextLogFields(ctx)
+	fields["action"] = action
+	logrus.WithFields(fields).Info(details)
 }
 
 // displayUsername returns "@username", or the first name for users without a username.
@@ -143,28 +138,73 @@ func HandleCommands(bot *gotgbot.Bot, ctx *ext.Context) error {
 	return nil
 }
 
+// CheckPermission reports whether the chat and the sender may use protected
+// features. On denial it tells the sender: an alert for button clicks, a reply
+// for messages.
 func CheckPermission(bot *gotgbot.Bot, ctx *ext.Context) bool {
-	var hasPermission bool
-	// get channel id from ctx
-	channelId := ctx.EffectiveChat.Id
-	// check is channel id in the list of allowed channels
-	for _, id := range config.GetAppConfig().Telegram.AllowedChannels {
-		if id == channelId {
-			hasPermission = true
-			break
-		}
+	telegramConfig := config.GetAppConfig().Telegram
+	if isPermitted(ctx.EffectiveChat, ctx.EffectiveUser, telegramConfig.AllowedChannels, telegramConfig.AllowedUsers) {
+		return true
 	}
 
-	if !hasPermission {
-		logrus.WithFields(logrus.Fields{
-			"user_id":   ctx.EffectiveUser.Id,
-			"username":  ctx.EffectiveUser.Username,
-			"chat_id":   channelId,
-			"chat_type": ctx.EffectiveChat.Type,
-		}).Warn("permission denied - chat not in allowed list")
+	logrus.WithFields(ContextLogFields(ctx)).Warn("permission denied - chat or user not in allowed list")
+	if cb := ctx.CallbackQuery; cb != nil {
+		_, _ = cb.Answer(bot, &gotgbot.AnswerCallbackQueryOpts{
+			Text:      "Access denied. This chat or user cannot use this bot.",
+			ShowAlert: true,
+		})
+		return false
+	}
+	if ctx.EffectiveMessage != nil {
 		_ = ResponseNotHasPermission(bot, ctx)
 	}
-	return hasPermission
+	return false
+}
+
+// RequirePermission guards handlers that Telegram can trigger without a command,
+// such as button callbacks and conversation entry points. Callback data comes
+// from the client, and buttons survive forwarding to other chats, so every
+// callback must check the chat again.
+func RequirePermission(next func(*gotgbot.Bot, *ext.Context) error) func(*gotgbot.Bot, *ext.Context) error {
+	return func(bot *gotgbot.Bot, ctx *ext.Context) error {
+		if !CheckPermission(bot, ctx) {
+			return nil
+		}
+		return next(bot, ctx)
+	}
+}
+
+// IsAllowedChat reports whether the chat is in the allowed list.
+func IsAllowedChat(chatID int64) bool {
+	return slices.Contains(config.GetAppConfig().Telegram.AllowedChannels, chatID)
+}
+
+// isPermitted denies inline-mode callbacks (no chat) by design. An empty
+// allowedUsers list keeps the old behavior: every member of an allowed chat
+// has access.
+func isPermitted(chat *gotgbot.Chat, user *gotgbot.User, allowedChats, allowedUsers []int64) bool {
+	if chat == nil || !slices.Contains(allowedChats, chat.Id) {
+		return false
+	}
+	if len(allowedUsers) == 0 {
+		return true
+	}
+	return user != nil && slices.Contains(allowedUsers, user.Id)
+}
+
+// ContextLogFields returns user and chat log fields. It is safe when the update
+// has no user or no chat.
+func ContextLogFields(ctx *ext.Context) logrus.Fields {
+	fields := logrus.Fields{}
+	if user := ctx.EffectiveUser; user != nil {
+		fields["user_id"] = user.Id
+		fields["username"] = user.Username
+	}
+	if chat := ctx.EffectiveChat; chat != nil {
+		fields["chat_id"] = chat.Id
+		fields["chat_type"] = chat.Type
+	}
+	return fields
 }
 
 func getCommandFromMessage(b *gotgbot.Bot, msg *gotgbot.Message) string {

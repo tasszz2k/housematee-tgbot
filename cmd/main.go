@@ -56,12 +56,7 @@ func initTelegramBot() {
 			ctx *ext.Context,
 			err error,
 		) ext.DispatcherAction {
-			logrus.WithFields(logrus.Fields{
-				"user_id":   ctx.EffectiveUser.Id,
-				"username":  ctx.EffectiveUser.Username,
-				"chat_id":   ctx.EffectiveChat.Id,
-				"chat_type": ctx.EffectiveChat.Type,
-			}).Errorf("error handling update: %s", err.Error())
+			logrus.WithFields(commands.ContextLogFields(ctx)).Errorf("error handling update: %s", err.Error())
 			return ext.DispatcherActionNoop
 		},
 		MaxRoutines: ext.DefaultMaxRoutines,
@@ -187,7 +182,7 @@ func registerCommandHandlers(dispatcher *ext.Dispatcher) {
 				// and callback (splitill.add) query handlers
 				botHandlers.NewCallback(
 					callbackquery.Equal("splitbill.add"),
-					commands.StartAddSplitBill,
+					commands.RequirePermission(commands.StartAddSplitBill),
 				),
 				botHandlers.NewCommand(
 					enum.SplitBillAddActionCommand,
@@ -221,7 +216,7 @@ func registerCommandHandlers(dispatcher *ext.Dispatcher) {
 			[]ext.Handler{
 				botHandlers.NewCallback(
 					callbackquery.Prefix("splitbill.update."),
-					commands.HandleSelectExpenseForUpdate,
+					commands.RequirePermission(commands.HandleSelectExpenseForUpdate),
 				),
 			},
 			map[string][]ext.Handler{
@@ -251,7 +246,7 @@ func registerCommandHandlers(dispatcher *ext.Dispatcher) {
 			[]ext.Handler{
 				botHandlers.NewCommand(
 					enum.RentCommand,
-					commands.StartRentConversation,
+					commands.RequirePermission(commands.StartRentConversation),
 				),
 			},
 			map[string][]ext.Handler{
@@ -291,31 +286,31 @@ func registerCommandHandlers(dispatcher *ext.Dispatcher) {
 	dispatcher.AddHandler(
 		botHandlers.NewCallback(
 			callbackquery.Prefix("help."),
-			commands.HandleHelpActionCallback,
+			commands.RequirePermission(commands.HandleHelpActionCallback),
 		),
 	)
 	dispatcher.AddHandler(
 		botHandlers.NewCallback(
 			callbackquery.Prefix("splitbill."),
-			commands.HandleSplitBillActionCallback,
+			commands.RequirePermission(commands.HandleSplitBillActionCallback),
 		),
 	)
 	dispatcher.AddHandler(
 		botHandlers.NewCallback(
 			callbackquery.Prefix("housework."),
-			commands.HandleHouseworkActionCallback,
+			commands.RequirePermission(commands.HandleHouseworkActionCallback),
 		),
 	)
 	dispatcher.AddHandler(
 		botHandlers.NewCallback(
 			callbackquery.Prefix("gsheets."),
-			commands.HandleGSheetsActionCallback,
+			commands.RequirePermission(commands.HandleGSheetsActionCallback),
 		),
 	)
 	dispatcher.AddHandler(
 		botHandlers.NewCallback(
 			callbackquery.Prefix("settings."),
-			commands.HandleSettingsActionCallback,
+			commands.RequirePermission(commands.HandleSettingsActionCallback),
 		),
 	)
 

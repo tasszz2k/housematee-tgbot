@@ -256,7 +256,12 @@ Shows Name, Assignee, TurnsRemaining, Frequency, LastDone, NextDue (with "today"
 
 - Commands check `CheckPermission(bot, ctx)` before execution
 - Validates chat ID against `config.Telegram.AllowedChannels`
-- Public commands (no permission): /hello, /start, /feedback
+- Optional `config.Telegram.AllowedUsers` (user IDs): when set, the sender must also be in the list. Empty means every member of an allowed chat has access.
+- Every callback handler and conversation entry point in `cmd/main.go` is wrapped with `commands.RequirePermission`. Callback data comes from the client and buttons survive forwarding, so a callback must never skip the check. Wrap every new `NewCallback` handler.
+- On denial: callbacks get a `ShowAlert` answer, messages get an "Access Denied" reply. A denied callback never reaches the handler, so `HandleHouseworkActionCallback` still answers only once.
+- Inline-mode callbacks (no chat) are always denied.
+- Due reminders go to `task.ChannelId` from the sheet. If that chat is not in `AllowedChannels`, the reminder is sent without buttons.
+- Public commands (no permission): /hello, /start, /feedback, /cancel
 - Protected: All others
 
 ---

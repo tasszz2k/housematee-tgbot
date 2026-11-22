@@ -585,27 +585,32 @@ func NotifyDueTasks(bot *gotgbot.Bot) {
 			enum.EmojiCalendar, dueDate,
 		)
 
-		_, err = bot.SendMessage(
-			task.ChannelId,
-			message,
-			&gotgbot.SendMessageOpts{
-				ParseMode: "markdown",
-				ReplyMarkup: &gotgbot.InlineKeyboardMarkup{
-					InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
+		opts := &gotgbot.SendMessageOpts{ParseMode: "markdown"}
+		// ChannelId comes from the sheet, not from the allowed list. Buttons in a
+		// chat that is not allowed would only show "Access denied".
+		if IsAllowedChat(task.ChannelId) {
+			opts.ReplyMarkup = &gotgbot.InlineKeyboardMarkup{
+				InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
+					{
 						{
-							{
-								Text:         enum.EmojiCheck + " Mark as done",
-								CallbackData: fmt.Sprintf("housework.%d.done", task.ID),
-							},
-							{
-								Text:         enum.EmojiDetails + " View details",
-								CallbackData: fmt.Sprintf("housework.%d.view", task.ID),
-							},
+							Text:         enum.EmojiCheck + " Mark as done",
+							CallbackData: fmt.Sprintf("housework.%d.done", task.ID),
+						},
+						{
+							Text:         enum.EmojiDetails + " View details",
+							CallbackData: fmt.Sprintf("housework.%d.view", task.ID),
 						},
 					},
 				},
-			},
-		)
+			}
+		} else {
+			logrus.WithFields(logrus.Fields{
+				"channel_id": task.ChannelId,
+				"task_id":    task.ID,
+			}).Warn("reminder chat is not in allowed_channels, sending without buttons")
+		}
+
+		_, err = bot.SendMessage(task.ChannelId, message, opts)
 		if err != nil {
 			logrus.WithFields(logrus.Fields{
 				"channel_id": task.ChannelId,

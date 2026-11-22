@@ -22,6 +22,8 @@ type AppConfig struct {
 type Telegram struct {
 	ApiToken        string  `mapstructure:"api_token" validate:"required"`
 	AllowedChannels []int64 `mapstructure:"allowed_channels" validate:"required"`
+	// AllowedUsers is optional. When empty, every member of an allowed chat has access.
+	AllowedUsers []int64 `mapstructure:"allowed_users"`
 }
 
 type GoogleApis struct {

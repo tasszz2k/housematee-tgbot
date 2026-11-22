@@ -142,6 +142,8 @@ telegram:
   token: "YOUR_BOT_TOKEN"
   allowed_channels:
     - -1001234567890  # Your group chat ID
+  allowed_users:      # Optional. Telegram user IDs. Empty = every member of an allowed chat
+    - 123456789
 
 google_sheets:
   spreadsheet_id: "YOUR_SPREADSHEET_ID"
