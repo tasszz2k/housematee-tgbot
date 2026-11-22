@@ -7,6 +7,8 @@ import (
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext"
 	"github.com/sirupsen/logrus"
+
+	"housematee-tgbot/enum"
 )
 
 // Settings action constants
@@ -51,18 +53,17 @@ func Settings(bot *gotgbot.Bot, ctx *ext.Context) error {
 }
 
 func showSettingsMainMenu(bot *gotgbot.Bot, ctx *ext.Context, edit bool) error {
-	message := "*Settings*\n\nSelect a setting to configure:"
+	message := enum.EmojiSettings + " *Settings*\n\nChoose a setting:"
 
-	// Show status indicators in the menu
-	reminderStatus := "ON"
+	reminderIcon, reminderStatus := enum.EmojiBell, "ON"
 	if !IsReminderEnabled() {
-		reminderStatus = "OFF"
+		reminderIcon, reminderStatus = enum.EmojiBellOff, "OFF"
 	}
 
 	inlineKeyboard := gotgbot.InlineKeyboardMarkup{
 		InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
 			{
-				{Text: fmt.Sprintf("Housework Reminders [%s]", reminderStatus), CallbackData: "settings.housework_reminder"},
+				{Text: fmt.Sprintf("%s Housework Reminders: %s", reminderIcon, reminderStatus), CallbackData: "settings.housework_reminder"},
 			},
 		},
 	}
@@ -116,24 +117,29 @@ func HandleSettingsActionCallback(bot *gotgbot.Bot, ctx *ext.Context) error {
 }
 
 func showHouseworkReminderMenu(bot *gotgbot.Bot, ctx *ext.Context) error {
-	cb := ctx.Update.CallbackQuery
+	return renderHouseworkReminderMenu(bot, ctx.Update.CallbackQuery, IsReminderEnabled())
+}
 
-	reminderStatus := "ON"
-	buttonText := "Turn OFF"
-	if !IsReminderEnabled() {
-		reminderStatus = "OFF"
-		buttonText = "Turn ON"
+func renderHouseworkReminderMenu(bot *gotgbot.Bot, cb *gotgbot.CallbackQuery, enabled bool) error {
+	status := enum.EmojiOn + " *ON*"
+	button := enum.EmojiBellOff + " Turn OFF"
+	if !enabled {
+		status = enum.EmojiOff + " *OFF*"
+		button = enum.EmojiBell + " Turn ON"
 	}
 
-	message := fmt.Sprintf("*Housework Reminders*\n\nStatus: *%s*\n\nDaily notifications are sent at 18:30 for tasks that are due.", reminderStatus)
+	message := fmt.Sprintf(
+		"%s *Housework Reminders*\n\nStatus: %s\n\nWhen ON, the bot sends a reminder at 18:30 every day for each task that is due.",
+		enum.EmojiBell, status,
+	)
 
 	inlineKeyboard := gotgbot.InlineKeyboardMarkup{
 		InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
 			{
-				{Text: buttonText, CallbackData: "settings.reminder_toggle"},
+				{Text: button, CallbackData: "settings.reminder_toggle"},
 			},
 			{
-				{Text: "<< Back", CallbackData: "settings.back"},
+				{Text: enum.EmojiBack + " Back", CallbackData: "settings.back"},
 			},
 		},
 	}
@@ -146,44 +152,16 @@ func showHouseworkReminderMenu(bot *gotgbot.Bot, ctx *ext.Context) error {
 }
 
 func handleReminderToggle(bot *gotgbot.Bot, ctx *ext.Context) error {
-	cb := ctx.Update.CallbackQuery
-
-	// Toggle the state
 	newState := ToggleReminder()
-
-	stateText := "OFF"
-	buttonText := "Turn ON"
-	if newState {
-		stateText = "ON"
-		buttonText = "Turn OFF"
-	}
 
 	logrus.WithFields(logrus.Fields{
 		"user_id":   ctx.EffectiveUser.Id,
 		"username":  ctx.EffectiveUser.Username,
-		"new_state": stateText,
+		"new_state": newState,
 	}).Info("housework reminders toggled")
 
-	message := fmt.Sprintf("*Housework Reminders*\n\nStatus: *%s*\n\nDaily notifications are sent at 18:30 for tasks that are due.", stateText)
-
-	inlineKeyboard := gotgbot.InlineKeyboardMarkup{
-		InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
-			{
-				{Text: buttonText, CallbackData: "settings.reminder_toggle"},
-			},
-			{
-				{Text: "<< Back", CallbackData: "settings.back"},
-			},
-		},
-	}
-
-	_, _, err := cb.Message.EditText(bot, message, &gotgbot.EditMessageTextOpts{
-		ParseMode:   "markdown",
-		ReplyMarkup: inlineKeyboard,
-	})
-	if err != nil {
+	if err := renderHouseworkReminderMenu(bot, ctx.Update.CallbackQuery, newState); err != nil {
 		logrus.Errorf("failed to edit settings message: %s", err.Error())
 	}
-
 	return nil
 }

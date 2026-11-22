@@ -177,6 +177,13 @@ After adding or updating an expense, inline buttons are shown:
 
 **Message displays:** Summary + per-member breakdown with weighted shares
 
+### Message Style
+
+- Every button starts with an emoji. Emoji live in `enum/emoji.go` as `\U` escape constants, so Go sources stay ASCII.
+- Message layout: `emoji *Title*`, blank line, then short `emoji Label: value` lines.
+- Errors: `enum.EmojiCross` + bold title + one line of reason.
+- Legacy Markdown parse mode treats `_` as italics, so do not put `/splitbill_add` in Markdown text.
+
 ### Housework Management (/housework)
 
 **Weighted Task Rotation Logic:**
@@ -189,11 +196,30 @@ After adding or updating an expense, inline buttons are shown:
      - If TurnsRemaining > 1: decrement TurnsRemaining, keep same assignee
      - If TurnsRemaining <= 1: rotate to next member, set TurnsRemaining = new assignee's weight
 - "Assign to other" skips to next member and sets TurnsRemaining to their weight
+- If the current assignee is not in Members, rotation falls back to the first member
+
+**Action Guards (commands/housework.go):**
+- Only the current assignee can "Mark as done" (button or `/hwN`). Username match ignores case and the `@` prefix. A task with no assignee is open to everyone.
+- Anyone in the allowed chat can "Assign to other".
+- Rejected clicks get a Telegram alert (`ShowAlert`). Rejected `/hwN` gets a short reply.
+- `houseworkMu` serializes done/assign actions, because the dispatcher runs updates concurrently.
+- After a successful done/assign, the clicked message loses its buttons and its `chatID:messageID` goes into an in-memory set. A second click on the same message is rejected.
+- `HandleHouseworkActionCallback` is the only place that calls `cb.Answer`. Sub-handlers return a `callbackAnswer`.
+
+**Audit (message only, not stored in the sheet):**
+Done and reassign replies show who acted, when, and the assignee transition:
+```
+Done by: @tasszz2k
+At: 18/11/2026 14:28
+Assignee: @tasszz2k -> @ng0cth1nh   (or "@x (no change)" while TurnsRemaining > 1)
+```
+
+**Task List:** Sorted by task ID. Button label: `icon Name » @assignee » due`, where due is `dd/mm`, `today`, or `overdue Nd`. Icon is the bell for due or overdue tasks, otherwise the broom.
 
 **Task Info Display:**
-Shows Name, Frequency, LastDone, NextDue, Assignee, TurnsRemaining, Note
+Shows Name, Assignee, TurnsRemaining, Frequency, LastDone, NextDue (with "today" / "in N days" / "overdue N days"), Note. Buttons: Mark as done, Assign to other, All tasks.
 
-**Shortcut Commands:** `/hw1`, `/hw2`, etc. mark task 1, 2 as done directly
+**Shortcut Commands:** `/hw1`, `/hw2`, etc. mark task 1, 2 as done directly (assignee only)
 
 **Due Notifications:**
 - Cron runs at 18:30 daily
@@ -205,7 +231,7 @@ Shows Name, Frequency, LastDone, NextDue, Assignee, TurnsRemaining, Note
 
 **Main Menu:**
 - Shows available settings with current status
-- "Housework Reminders [ON/OFF]" button
+- "Housework Reminders: ON/OFF" button
 
 **Housework Reminders Submenu:**
 - Shows current status (ON/OFF)

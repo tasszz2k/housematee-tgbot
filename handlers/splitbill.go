@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/PaulSonOfLars/gotgbot/v2"
@@ -12,6 +13,7 @@ import (
 	"github.com/spf13/cast"
 	"google.golang.org/api/sheets/v4"
 	"housematee-tgbot/config"
+	"housematee-tgbot/enum"
 	"housematee-tgbot/models"
 	services "housematee-tgbot/services/gsheets"
 	"housematee-tgbot/utilities"
@@ -21,10 +23,10 @@ import (
 func HandleSplitBillViewAction(bot *gotgbot.Bot, ctx *ext.Context) error {
 	readRange, err := getLast5ExpenseReadRange()
 	if err != nil {
-		_, err := ctx.EffectiveMessage.Reply(bot, fmt.Sprintf("*Error*\n\n%s", err.Error()), &gotgbot.SendMessageOpts{ParseMode: "markdown"})
+		_, err := ctx.EffectiveMessage.Reply(bot, fmt.Sprintf("%s *Error*\n\n%s", enum.EmojiCross, err.Error()), &gotgbot.SendMessageOpts{ParseMode: "markdown"})
 		return err
 	} else if readRange == "" { // no data found
-		_, err := ctx.EffectiveMessage.Reply(bot, "*No Expenses*\n\nNo expenses recorded yet. Use *Add* to create your first expense.", &gotgbot.SendMessageOpts{ParseMode: "markdown"})
+		_, err := ctx.EffectiveMessage.Reply(bot, enum.EmojiReceipt+" *No Expenses*\n\nThere are no expenses yet. Tap "+enum.EmojiAdd+" Add to create one.", &gotgbot.SendMessageOpts{ParseMode: "markdown"})
 		return err
 	}
 
@@ -32,13 +34,13 @@ func HandleSplitBillViewAction(bot *gotgbot.Bot, ctx *ext.Context) error {
 	svc := services.GetGSheetsSvc()
 	resp, err := svc.Get(context.TODO(), spreadsheetId, readRange)
 	if err != nil {
-		_, err := ctx.EffectiveMessage.Reply(bot, fmt.Sprintf("*Error*\n\n%s", err.Error()), &gotgbot.SendMessageOpts{ParseMode: "markdown"})
+		_, err := ctx.EffectiveMessage.Reply(bot, fmt.Sprintf("%s *Error*\n\n%s", enum.EmojiCross, err.Error()), &gotgbot.SendMessageOpts{ParseMode: "markdown"})
 		return err
 	}
 
 	// convert resp to models.Expense array
 	if len(resp.Values) == 0 {
-		_, err := ctx.EffectiveMessage.Reply(bot, "*No Expenses*\n\nNo expenses recorded yet. Use *Add* to create your first expense.", &gotgbot.SendMessageOpts{ParseMode: "markdown"})
+		_, err := ctx.EffectiveMessage.Reply(bot, enum.EmojiReceipt+" *No Expenses*\n\nThere are no expenses yet. Tap "+enum.EmojiAdd+" Add to create one.", &gotgbot.SendMessageOpts{ParseMode: "markdown"})
 		return err
 	}
 
@@ -72,15 +74,9 @@ func HandleSplitBillViewAction(bot *gotgbot.Bot, ctx *ext.Context) error {
 	//                | 1  | ...          | ...    | ...  | ...   |
 	//                | 2  | ...          | ...    | ...  | ...   |
 
-	// Create a Markdown-formatted list with bold keys
-	markdownList := "*Recent Expenses*\n\n"
-
-	// Iterate over the expenses and format them as list items
+	markdownList := enum.EmojiView + " *Recent Expenses*\n\n"
 	for _, expense := range expenses {
-		formattedExpense := convertExpenseModelToMarkdown(expense)
-
-		// Append the formatted expense to the Markdown list
-		markdownList += formattedExpense
+		markdownList += FormatExpenseMarkdown(expense) + "\n\n"
 	}
 
 	// Send the Markdown-formatted list to the user
@@ -94,28 +90,44 @@ func HandleSplitBillViewAction(bot *gotgbot.Bot, ctx *ext.Context) error {
 	return nil
 }
 
-func convertExpenseModelToMarkdown(expense models.Expense) string {
-	participants := "*everyone*"
+// FormatExpenseMarkdown renders one expense as a Markdown block.
+func FormatExpenseMarkdown(expense models.Expense) string {
+	participants := "everyone"
 	if len(expense.Participants) > 0 {
-		participants = strings.Join(
-			expense.Participants,
-			", ",
-		) // Join participant names with commas
+		participants = strings.Join(expense.Participants, ", ")
 	}
 
-	// Format the expense data with bold keys
-	note := fmt.Sprintf("_%s_", expense.Note)
-	formattedExpense := fmt.Sprintf(
-		"• *ID*: %d\n  *Name*: %s\n  *Amount*: %s\n  *Date*: %s\n  *Payer*: %s\n  *Participants*: %s\n  *Note*: %s\n\n",
-		expense.ID,
-		expense.Name,
-		expense.Amount,
-		expense.Date,
-		expense.Payer,
-		participants,
-		note,
+	note := "-"
+	if expense.Note != "" {
+		note = fmt.Sprintf("_%s_", expense.Note)
+	}
+
+	return fmt.Sprintf(
+		"%s *#%d %s*\n"+
+			"%s Amount: %s\n"+
+			"%s Date: %s\n"+
+			"%s Payer: %s\n"+
+			"%s Participants: %s\n"+
+			"%s Note: %s",
+		enum.EmojiReceipt, expense.ID, expense.Name,
+		enum.EmojiMoney, expense.Amount,
+		enum.EmojiCalendar, expense.Date,
+		enum.EmojiUser, expense.Payer,
+		enum.EmojiUsers, participants,
+		enum.EmojiNote, note,
 	)
-	return formattedExpense
+}
+
+// ExpenseActionKeyboard holds the buttons shown under an added or updated expense.
+func ExpenseActionKeyboard(expenseID uint32) gotgbot.InlineKeyboardMarkup {
+	return gotgbot.InlineKeyboardMarkup{
+		InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
+			{
+				{Text: enum.EmojiEdit + " Update", CallbackData: fmt.Sprintf("splitbill.update.%d", expenseID)},
+				{Text: enum.EmojiDelete + " Delete", CallbackData: fmt.Sprintf("splitbill.delete.%d", expenseID)},
+			},
+		},
+	}
 }
 
 func getLast5ExpenseReadRange() (string, error) {
@@ -188,7 +200,7 @@ func HandleExpenseAddAction(bot *gotgbot.Bot, ctx *ext.Context) (err error) {
 	if len(input) < 2 {
 		_, err := ctx.EffectiveMessage.Reply(
 			bot,
-			"*Invalid Input*\n\nPlease provide at least the expense name and amount.",
+			enum.EmojiCross+" *Invalid Input*\n\nSend at least two lines: the expense name, then the amount.",
 			&gotgbot.SendMessageOpts{ParseMode: "markdown"},
 		)
 		return err
@@ -214,7 +226,7 @@ func HandleExpenseAddAction(bot *gotgbot.Bot, ctx *ext.Context) (err error) {
 
 	// validate input
 	if err := checkValidExpenseInput(expenseName, amount, dateStr, payer); err != nil {
-		_, err := ctx.EffectiveMessage.Reply(bot, fmt.Sprintf("*Validation Error*\n\n%s", err.Error()), &gotgbot.SendMessageOpts{ParseMode: "markdown"})
+		_, err := ctx.EffectiveMessage.Reply(bot, fmt.Sprintf("%s *Invalid Input*\n\n%s", enum.EmojiCross, err.Error()), &gotgbot.SendMessageOpts{ParseMode: "markdown"})
 		return err
 	}
 
@@ -247,7 +259,7 @@ func HandleExpenseAddAction(bot *gotgbot.Bot, ctx *ext.Context) (err error) {
 		// Redirect user to use the new /rent command for detailed breakdown
 		_, err := ctx.EffectiveMessage.Reply(
 			bot,
-			"*Rent Detected*\n\nTo add rent with detailed breakdown (electric, water, other fees), please use the /rent command.",
+			enum.EmojiHouse+" *Rent Detected*\n\nUse /rent to add rent. It asks for the total, electric, and water amounts.",
 			&gotgbot.SendMessageOpts{ParseMode: "markdown"},
 		)
 		if err != nil {
@@ -259,25 +271,15 @@ func HandleExpenseAddAction(bot *gotgbot.Bot, ctx *ext.Context) (err error) {
 	// Add regular expense to Google Sheets
 	newExpense, err = addNewExpense(expense)
 	if err != nil {
-		_, err := ctx.EffectiveMessage.Reply(bot, fmt.Sprintf("*Failed to Add Expense*\n\n%s", err.Error()), &gotgbot.SendMessageOpts{ParseMode: "markdown"})
+		_, err := ctx.EffectiveMessage.Reply(bot, fmt.Sprintf("%s *Expense Not Added*\n\n%s", enum.EmojiCross, err.Error()), &gotgbot.SendMessageOpts{ParseMode: "markdown"})
 		return err
 	}
 
-	// Reply to user with the details and action buttons
-	response := "*Expense Added*\n\n" + convertExpenseModelToMarkdown(*newExpense)
-
-	inlineKeyboard := gotgbot.InlineKeyboardMarkup{
-		InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
-			{
-				{Text: "Update", CallbackData: fmt.Sprintf("splitbill.update.%d", newExpense.ID)},
-				{Text: "Delete", CallbackData: fmt.Sprintf("splitbill.delete.%d", newExpense.ID)},
-			},
-		},
-	}
+	response := enum.EmojiCheck + " *Expense Added*\n\n" + FormatExpenseMarkdown(*newExpense)
 
 	_, err = ctx.EffectiveMessage.Reply(bot, response, &gotgbot.SendMessageOpts{
 		ParseMode:   "Markdown",
-		ReplyMarkup: inlineKeyboard,
+		ReplyMarkup: ExpenseActionKeyboard(newExpense.ID),
 	})
 	if err != nil {
 		return err
@@ -496,34 +498,37 @@ func convertBalancesDataToBalanceModel(values [][]interface{}) (balances models.
 }
 
 func renderReportMarkdown(report models.Report, balances models.Balance) string {
-	text := "\U0001F4CA *Report*\n\n"
+	text := enum.EmojiReport + " *Monthly Report*\n\n"
 
-	text += "\U0001F6D2 *Expenses*\n"
-	text += "\u2022 *Amount*: " + report.Expenses.Amount + "\n\n"
+	text += enum.EmojiCart + " Expenses: " + report.Expenses.Amount + "\n"
 
-	text += "\U0001F3E0 *Rent*\n"
 	if report.Rent.Amount == "" || report.Rent.Amount == "0" {
-		text += "\u2022 *Amount*: _not paid_\n"
+		text += enum.EmojiHouse + " Rent: _not paid yet_\n"
 	} else {
-		text += "\u2022 *Amount*: " + report.Rent.Amount + "\n"
+		text += enum.EmojiHouse + " Rent: " + report.Rent.Amount
 		if report.Rent.Note != "" && report.Rent.Note != "x" {
-			text += "\u2022 *Payer*: _" + report.Rent.Note + "_\n"
+			text += " (paid by " + report.Rent.Note + ")"
 		}
+		text += "\n"
 	}
-	text += "\n"
 
-	text += "\U0001F4B0 *Total*\n"
-	text += "\u2022 *Amount*: " + report.Total.Amount + "\n\n"
+	text += enum.EmojiMoney + " *Total: " + report.Total.Amount + "*\n"
 
-	text += "-----\n\U0001F4B3 *Balances*\n\n"
+	text += "\n---\n" + enum.EmojiCard + " *Balances*\n"
 
-	balanceMap := balances.Users
-	for username, balance := range balanceMap {
-		text += "\U0001F464 *" + username + "*:\n"
-		text += "\u2022 *Total Paid*: " + balance.TotalPaid + "\n"
-		text += "\u2022 *Expense Balance*: " + balance.HaveToPay + "\n"
-		text += "\u2022 *Rent Balance*: " + balance.Balance + "\n"
-		text += "\u2022 *Final Balance*: " + balance.FinalBalance + "\n\n"
+	usernames := make([]string, 0, len(balances.Users))
+	for username := range balances.Users {
+		usernames = append(usernames, username)
+	}
+	sort.Strings(usernames)
+
+	for _, username := range usernames {
+		balance := balances.Users[username]
+		text += "\n" + enum.EmojiUser + " *" + username + "*\n"
+		text += "\u2022 Total paid: " + balance.TotalPaid + "\n"
+		text += "\u2022 Expense balance: " + balance.HaveToPay + "\n"
+		text += "\u2022 Rent balance: " + balance.Balance + "\n"
+		text += "\u2022 *Final balance: " + balance.FinalBalance + "*\n"
 	}
 
 	return text

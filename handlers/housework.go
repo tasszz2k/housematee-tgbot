@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cast"
 	"google.golang.org/api/sheets/v4"
 	"housematee-tgbot/config"
+	"housematee-tgbot/enum"
 	"housematee-tgbot/models"
 	services "housematee-tgbot/services/gsheets"
 	"housematee-tgbot/utilities"
@@ -103,24 +104,65 @@ func UpdateHousework(svc *services.GSheets, spreadsheetId string, currentSheetNa
 }
 
 func ConvertHouseworkToMarkdownFormat(housework models.Task) string {
-	frequency := fmt.Sprintf("%d days", housework.Frequency)
-	note := fmt.Sprintf("_%s_", housework.Note)
-	// if the next due is today, add an emoji
 	nextDue := housework.NextDue
-	if housework.NextDue == utilities.GetCurrentDate() {
-		nextDue = fmt.Sprintf("*%s >> Today*", housework.NextDue)
+	if status := DueStatusText(housework.NextDue); status != "" {
+		nextDue = fmt.Sprintf("%s (%s)", housework.NextDue, status)
+		if days, err := utilities.DaysUntil(housework.NextDue); err == nil && days <= 0 {
+			nextDue = "*" + nextDue + "*"
+		}
+	}
+
+	note := "-"
+	if housework.Note != "" {
+		note = fmt.Sprintf("_%s_", housework.Note)
 	}
 
 	return fmt.Sprintf(
-		"*Name*: %s\n*Frequency*: %s\n*Last done*: %s\n*Next due*: %s\n*Assignee*: %s\n*Turns remaining*: %d\n*Note*: %s",
-		housework.Name,
-		frequency,
-		housework.LastDone,
-		nextDue,
-		housework.Assignee,
-		housework.TurnsRemaining,
-		note,
+		"%s *%s*\n"+
+			"%s Assignee: %s\n"+
+			"%s Turns remaining: %d\n"+
+			"%s Every %s\n"+
+			"%s Last done: %s\n"+
+			"%s Next due: %s\n"+
+			"%s Note: %s",
+		enum.EmojiBroom, housework.Name,
+		enum.EmojiUser, housework.Assignee,
+		enum.EmojiHourglass, housework.TurnsRemaining,
+		enum.EmojiRepeat, pluralDays(housework.Frequency),
+		enum.EmojiCheck, valueOrDash(housework.LastDone),
+		enum.EmojiCalendar, valueOrDash(nextDue),
+		enum.EmojiNote, note,
 	)
+}
+
+// DueStatusText describes a due date relative to today, or returns "" if the date cannot be parsed.
+func DueStatusText(dateStr string) string {
+	days, err := utilities.DaysUntil(dateStr)
+	if err != nil {
+		return ""
+	}
+	switch {
+	case days == 0:
+		return "today"
+	case days < 0:
+		return "overdue " + pluralDays(-days)
+	default:
+		return "in " + pluralDays(days)
+	}
+}
+
+func pluralDays(n int) string {
+	if n == 1 {
+		return "1 day"
+	}
+	return fmt.Sprintf("%d days", n)
+}
+
+func valueOrDash(s string) string {
+	if s == "" {
+		return "-"
+	}
+	return s
 }
 
 // GetTaskWeights reads task weights from Google Sheets columns K:M on the Tasks sheet

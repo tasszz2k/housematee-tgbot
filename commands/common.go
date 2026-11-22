@@ -28,11 +28,22 @@ func logUserAction(ctx *ext.Context, action string, details string) {
 	}).Info(details)
 }
 
+// displayUsername returns "@username", or the first name for users without a username.
+func displayUsername(user *gotgbot.User) string {
+	if user == nil {
+		return ""
+	}
+	if user.Username == "" {
+		return user.FirstName
+	}
+	return "@" + user.Username
+}
+
 // Cancel cancels the conversation.
 func Cancel(b *gotgbot.Bot, ctx *ext.Context) error {
 	logUserAction(ctx, "cancel", "conversation cancelled")
 	_, err := ctx.EffectiveMessage.Reply(
-		b, "Operation cancelled.", &gotgbot.SendMessageOpts{
+		b, enum.EmojiCross+" <b>Cancelled</b>\n\nThe current operation is stopped.", &gotgbot.SendMessageOpts{
 			ParseMode: "html",
 		},
 	)
@@ -47,7 +58,7 @@ func Todo(bot *gotgbot.Bot, ctx *ext.Context) error {
 	logUserAction(ctx, "todo", "action not implemented")
 	_, err := ctx.EffectiveMessage.Reply(
 		bot,
-		"*Coming Soon*\n\nThis feature is not yet available. Stay tuned for updates!",
+		enum.EmojiSoon+" *Coming Soon*\n\nThis feature is not available yet.",
 		&gotgbot.SendMessageOpts{
 			ParseMode: "markdown",
 		},
@@ -66,7 +77,7 @@ func NoCommands(msg *gotgbot.Message) bool {
 func ResponseNotHasPermission(bot *gotgbot.Bot, ctx *ext.Context) error {
 	_, err := ctx.EffectiveMessage.Reply(
 		bot,
-		"*Access Denied*\n\nThis chat is not authorized to use this command.",
+		enum.EmojiLock+" *Access Denied*\n\nThis chat cannot use this command.",
 		&gotgbot.SendMessageOpts{
 			ParseMode: "markdown",
 		},

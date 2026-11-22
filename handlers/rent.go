@@ -9,6 +9,7 @@ import (
 	"google.golang.org/api/sheets/v4"
 
 	"housematee-tgbot/config"
+	"housematee-tgbot/enum"
 	"housematee-tgbot/models"
 	"housematee-tgbot/utilities"
 )
@@ -70,25 +71,21 @@ func SaveRentData(rentData *models.RentData) error {
 func FormatRentSummary(rentData *models.RentData) string {
 	var sb strings.Builder
 
-	sb.WriteString("*Rent saved!*\n\n")
-	sb.WriteString("*Summary:*\n")
-	sb.WriteString("-----------------\n")
-	sb.WriteString(fmt.Sprintf("\u26a1 Electric:   %s\n", utilities.FormatMoney(int(rentData.Electric))))
-	sb.WriteString(fmt.Sprintf("\U0001F4A7 Water:      %s\n", utilities.FormatMoney(int(rentData.Water))))
-	sb.WriteString(fmt.Sprintf("\U0001F4C4 Other Fees: %s\n", utilities.FormatMoney(int(rentData.OtherFees))))
-	sb.WriteString("-----------------\n")
-	sb.WriteString(fmt.Sprintf("\U0001F4B0 *Total Rent:* %s\n", utilities.FormatMoney(int(rentData.TotalBill))))
-	sb.WriteString(fmt.Sprintf("\U0001F464 *Payer:* %s\n", rentData.Payer))
+	sb.WriteString(fmt.Sprintf("%s *Rent Saved*\n\n", enum.EmojiCheck))
+	sb.WriteString(fmt.Sprintf("%s Electric: %s\n", enum.EmojiElectric, utilities.FormatMoney(int(rentData.Electric))))
+	sb.WriteString(fmt.Sprintf("%s Water: %s\n", enum.EmojiWater, utilities.FormatMoney(int(rentData.Water))))
+	sb.WriteString(fmt.Sprintf("%s Other fees: %s\n", enum.EmojiPage, utilities.FormatMoney(int(rentData.OtherFees))))
+	sb.WriteString(fmt.Sprintf("%s *Total rent: %s*\n", enum.EmojiMoney, utilities.FormatMoney(int(rentData.TotalBill))))
+	sb.WriteString(fmt.Sprintf("%s Paid by: %s\n", enum.EmojiUser, rentData.Payer))
 
-	// Add per-member breakdown if available
 	if len(rentData.MemberShares) > 0 {
-		sb.WriteString("\n*Per-member breakdown:*\n")
+		sb.WriteString(fmt.Sprintf("\n---\n%s *Share per member*\n", enum.EmojiUsers))
 		for _, share := range rentData.MemberShares {
-			sb.WriteString(fmt.Sprintf("\n\U0001F464 *%s:*\n", share.Username))
-			sb.WriteString(fmt.Sprintf("  \u26a1 Electric: %s\n", utilities.FormatMoney(int(share.ElectricShare))))
-			sb.WriteString(fmt.Sprintf("  \U0001F4A7 Water: %s\n", utilities.FormatMoney(int(share.WaterShare))))
-			sb.WriteString(fmt.Sprintf("  \U0001F4C4 Other: %s\n", utilities.FormatMoney(int(share.OtherShare))))
-			sb.WriteString(fmt.Sprintf("  \U0001F4B0 *Total: %s*\n", utilities.FormatMoney(int(share.TotalShare))))
+			sb.WriteString(fmt.Sprintf("\n%s *%s*\n", enum.EmojiUser, share.Username))
+			sb.WriteString(fmt.Sprintf("\u2022 %s Electric: %s\n", enum.EmojiElectric, utilities.FormatMoney(int(share.ElectricShare))))
+			sb.WriteString(fmt.Sprintf("\u2022 %s Water: %s\n", enum.EmojiWater, utilities.FormatMoney(int(share.WaterShare))))
+			sb.WriteString(fmt.Sprintf("\u2022 %s Other: %s\n", enum.EmojiPage, utilities.FormatMoney(int(share.OtherShare))))
+			sb.WriteString(fmt.Sprintf("\u2022 %s *Total: %s*\n", enum.EmojiMoney, utilities.FormatMoney(int(share.TotalShare))))
 		}
 	}
 

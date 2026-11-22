@@ -37,13 +37,15 @@ func SplitBill(bot *gotgbot.Bot, ctx *ext.Context) error {
 	inlineKeyboard := gotgbot.InlineKeyboardMarkup{
 		InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
 			{
-				{Text: "Add", CallbackData: "splitbill.add"},
-				{Text: "View", CallbackData: "splitbill.view"},
-				{Text: "Update", CallbackData: "splitbill.update"},
-				{Text: "Delete", CallbackData: "splitbill.delete"},
+				{Text: enum.EmojiAdd + " Add", CallbackData: "splitbill.add"},
+				{Text: enum.EmojiView + " View", CallbackData: "splitbill.view"},
 			},
 			{
-				{Text: "Show Report", CallbackData: "splitbill.report"},
+				{Text: enum.EmojiEdit + " Update", CallbackData: "splitbill.update"},
+				{Text: enum.EmojiDelete + " Delete", CallbackData: "splitbill.delete"},
+			},
+			{
+				{Text: enum.EmojiReport + " Show Report", CallbackData: "splitbill.report"},
 			},
 		},
 	}
@@ -51,7 +53,7 @@ func SplitBill(bot *gotgbot.Bot, ctx *ext.Context) error {
 	// Reply to the user with the available commands as buttons
 	_, err := ctx.EffectiveMessage.Reply(
 		bot,
-		"*Split Bill*\n\nSelect an action:",
+		enum.EmojiSplitBill+" *Split Bill*\n\nChoose an action:",
 		&gotgbot.SendMessageOpts{
 			ReplyMarkup: inlineKeyboard,
 			ParseMode:   "markdown",
@@ -127,13 +129,22 @@ func StartAddSplitBill(bot *gotgbot.Bot, ctx *ext.Context) error {
 	logUserAction(ctx, "splitbill_add", "starting add expense flow")
 	// Prompt the user to enter the details
 	htlmText := fmt.Sprintf(
-		`Please provide the details of the expense in the following format:
----
-[expense name]
-[amount]
-[date] <i>(auto-filled: %s)</i>
-[payer] <i>(auto-filled: @%s)</i>
-`, utilities.GetCurrentDate(), ctx.EffectiveUser.Username,
+		`%s <b>Add Expense</b>
+
+Send the details, one item on each line:
+<code>name
+amount
+date</code> <i>(optional, default: %s)</i>
+<code>payer</code> <i>(optional, default: %s)</i>
+
+Example:
+<code>Groceries
+150k</code>
+
+Amounts accept k (thousand) and m (million). Send /cancel to stop.`,
+		enum.EmojiAdd,
+		utilities.GetCurrentDate(),
+		escapeHTML(displayUsername(ctx.EffectiveUser)),
 	)
 	_, err := ctx.EffectiveMessage.Reply(
 		bot, htlmText, &gotgbot.SendMessageOpts{
@@ -161,30 +172,29 @@ func HandleSplitBillUpdateAction(bot *gotgbot.Bot, ctx *ext.Context) error {
 
 	expenses, err := handlers.GetRecentExpenses(5)
 	if err != nil {
-		_, err := ctx.EffectiveMessage.Reply(bot, fmt.Sprintf("*Error*\n\n%s", err.Error()), &gotgbot.SendMessageOpts{ParseMode: "markdown"})
+		_, err := ctx.EffectiveMessage.Reply(bot, fmt.Sprintf("%s *Error*\n\n%s", enum.EmojiCross, err.Error()), &gotgbot.SendMessageOpts{ParseMode: "markdown"})
 		return err
 	}
 
 	if len(expenses) == 0 {
-		_, err := ctx.EffectiveMessage.Reply(bot, "*No Expenses*\n\nNo expenses to update.", &gotgbot.SendMessageOpts{ParseMode: "markdown"})
+		_, err := ctx.EffectiveMessage.Reply(bot, enum.EmojiReceipt+" *No Expenses*\n\nThere are no expenses to update.", &gotgbot.SendMessageOpts{ParseMode: "markdown"})
 		return err
 	}
 
 	// Build keyboard with expense buttons
 	keyboard := make([][]gotgbot.InlineKeyboardButton, 0, len(expenses)+1)
 	for _, expense := range expenses {
-		buttonText := fmt.Sprintf("#%d: %s (%s)", expense.ID, expense.Name, expense.Amount)
 		keyboard = append(keyboard, []gotgbot.InlineKeyboardButton{
-			{Text: buttonText, CallbackData: fmt.Sprintf("splitbill.update.%d", expense.ID)},
+			{Text: expenseButtonLabel(enum.EmojiEdit, expense), CallbackData: fmt.Sprintf("splitbill.update.%d", expense.ID)},
 		})
 	}
 	keyboard = append(keyboard, []gotgbot.InlineKeyboardButton{
-		{Text: "<< Back", CallbackData: "splitbill.back"},
+		{Text: enum.EmojiBack + " Back", CallbackData: "splitbill.back"},
 	})
 
 	inlineKeyboard := gotgbot.InlineKeyboardMarkup{InlineKeyboard: keyboard}
 
-	_, err = ctx.EffectiveMessage.Reply(bot, "*Update Expense*\n\nSelect an expense to update:", &gotgbot.SendMessageOpts{
+	_, err = ctx.EffectiveMessage.Reply(bot, enum.EmojiEdit+" *Update Expense*\n\nChoose the expense to update:", &gotgbot.SendMessageOpts{
 		ParseMode:   "markdown",
 		ReplyMarkup: inlineKeyboard,
 	})
@@ -210,7 +220,7 @@ func HandleSelectExpenseForUpdate(bot *gotgbot.Bot, ctx *ext.Context) error {
 
 	expense, err := handlers.GetExpenseById(expenseId)
 	if err != nil {
-		_, err := ctx.EffectiveMessage.Reply(bot, fmt.Sprintf("*Error*\n\n%s", err.Error()), &gotgbot.SendMessageOpts{ParseMode: "markdown"})
+		_, err := ctx.EffectiveMessage.Reply(bot, fmt.Sprintf("%s *Error*\n\n%s", enum.EmojiCross, err.Error()), &gotgbot.SendMessageOpts{ParseMode: "markdown"})
 		return err
 	}
 
@@ -220,19 +230,19 @@ func HandleSelectExpenseForUpdate(bot *gotgbot.Bot, ctx *ext.Context) error {
 	pendingUpdateMutex.Unlock()
 
 	// Show current values and prompt for new amount only
-	message := fmt.Sprintf(`*Update Expense #%d*
+	message := fmt.Sprintf(`%s *Update Expense #%d*
 
-- *Name*: %s
-- *Current Amount*: %s
-- *Date*: %s
-- *Payer*: %s
+%s Name: %s
+%s Current amount: %s
+%s Date: %s
+%s Payer: %s
 
-Enter new amount:`,
-		expense.ID,
-		expense.Name,
-		expense.Amount,
-		expense.Date,
-		expense.Payer,
+Send the new amount (for example 150k). Send /cancel to stop.`,
+		enum.EmojiEdit, expense.ID,
+		enum.EmojiReceipt, expense.Name,
+		enum.EmojiMoney, expense.Amount,
+		enum.EmojiCalendar, expense.Date,
+		enum.EmojiUser, expense.Payer,
 	)
 
 	_, err = ctx.EffectiveMessage.Reply(bot, message, &gotgbot.SendMessageOpts{
@@ -257,7 +267,7 @@ func UpdateExpenseConversationHandler(bot *gotgbot.Bot, ctx *ext.Context) error 
 	pendingUpdateMutex.RUnlock()
 
 	if !exists || oldExpense == nil {
-		_, err := ctx.EffectiveMessage.Reply(bot, "*Error*\n\nNo expense selected for update. Please start again.", &gotgbot.SendMessageOpts{ParseMode: "markdown"})
+		_, err := ctx.EffectiveMessage.Reply(bot, enum.EmojiCross+" *Error*\n\nNo expense is selected. Start again with /splitbill.", &gotgbot.SendMessageOpts{ParseMode: "markdown"})
 		return err
 	}
 
@@ -267,21 +277,15 @@ func UpdateExpenseConversationHandler(bot *gotgbot.Bot, ctx *ext.Context) error 
 	// Parse the user's message - amount only
 	amountStr := strings.TrimSpace(ctx.EffectiveMessage.Text)
 	if amountStr == "" {
-		_, err := ctx.EffectiveMessage.Reply(bot, "*Error*\n\nPlease enter a valid amount.", &gotgbot.SendMessageOpts{ParseMode: "markdown"})
+		_, err := ctx.EffectiveMessage.Reply(bot, enum.EmojiCross+" *Invalid Amount*\n\nSend a number, for example 150k or 1.2m.", &gotgbot.SendMessageOpts{ParseMode: "markdown"})
 		return err
 	}
 	newExpense.Amount = utilities.ParseAmount(amountStr)
 
-	// Get username for audit log
-	username := "@" + ctx.EffectiveUser.Username
-	if ctx.EffectiveUser.Username == "" {
-		username = ctx.EffectiveUser.FirstName
-	}
-
 	// Update in Google Sheets with audit logging
-	err := handlers.UpdateExpenseById(*oldExpense, newExpense, username)
+	err := handlers.UpdateExpenseById(*oldExpense, newExpense, displayUsername(ctx.EffectiveUser))
 	if err != nil {
-		_, err := ctx.EffectiveMessage.Reply(bot, fmt.Sprintf("*Failed to Update*\n\n%s", err.Error()), &gotgbot.SendMessageOpts{ParseMode: "markdown"})
+		_, err := ctx.EffectiveMessage.Reply(bot, fmt.Sprintf("%s *Expense Not Updated*\n\n%s", enum.EmojiCross, err.Error()), &gotgbot.SendMessageOpts{ParseMode: "markdown"})
 		return err
 	}
 
@@ -294,20 +298,11 @@ func UpdateExpenseConversationHandler(bot *gotgbot.Bot, ctx *ext.Context) error 
 	newExpense.Amount = utilities.FormatMoney(cast.ToInt(newExpense.Amount))
 
 	// Reply with updated expense and action buttons
-	response := "*Expense Updated*\n\n" + formatExpenseMarkdown(newExpense)
-
-	inlineKeyboard := gotgbot.InlineKeyboardMarkup{
-		InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
-			{
-				{Text: "Update", CallbackData: fmt.Sprintf("splitbill.update.%d", newExpense.ID)},
-				{Text: "Delete", CallbackData: fmt.Sprintf("splitbill.delete.%d", newExpense.ID)},
-			},
-		},
-	}
+	response := enum.EmojiCheck + " *Expense Updated*\n\n" + handlers.FormatExpenseMarkdown(newExpense)
 
 	_, err = ctx.EffectiveMessage.Reply(bot, response, &gotgbot.SendMessageOpts{
 		ParseMode:   "markdown",
-		ReplyMarkup: inlineKeyboard,
+		ReplyMarkup: handlers.ExpenseActionKeyboard(newExpense.ID),
 	})
 	if err != nil {
 		return err
@@ -316,16 +311,8 @@ func UpdateExpenseConversationHandler(bot *gotgbot.Bot, ctx *ext.Context) error 
 	return tgBotHandler.EndConversation()
 }
 
-func formatExpenseMarkdown(expense models.Expense) string {
-	return fmt.Sprintf(
-		"*ID*: %d\n*Name*: %s\n*Amount*: %s\n*Date*: %s\n*Payer*: %s\n*Note*: _%s_",
-		expense.ID,
-		expense.Name,
-		expense.Amount,
-		expense.Date,
-		expense.Payer,
-		expense.Note,
-	)
+func expenseButtonLabel(icon string, expense models.Expense) string {
+	return fmt.Sprintf("%s #%d %s (%s)", icon, expense.ID, expense.Name, expense.Amount)
 }
 
 // ==================== DELETE FLOW ====================
@@ -336,30 +323,29 @@ func HandleSplitBillDeleteAction(bot *gotgbot.Bot, ctx *ext.Context) error {
 
 	expenses, err := handlers.GetRecentExpenses(5)
 	if err != nil {
-		_, err := ctx.EffectiveMessage.Reply(bot, fmt.Sprintf("*Error*\n\n%s", err.Error()), &gotgbot.SendMessageOpts{ParseMode: "markdown"})
+		_, err := ctx.EffectiveMessage.Reply(bot, fmt.Sprintf("%s *Error*\n\n%s", enum.EmojiCross, err.Error()), &gotgbot.SendMessageOpts{ParseMode: "markdown"})
 		return err
 	}
 
 	if len(expenses) == 0 {
-		_, err := ctx.EffectiveMessage.Reply(bot, "*No Expenses*\n\nNo expenses to delete.", &gotgbot.SendMessageOpts{ParseMode: "markdown"})
+		_, err := ctx.EffectiveMessage.Reply(bot, enum.EmojiReceipt+" *No Expenses*\n\nThere are no expenses to delete.", &gotgbot.SendMessageOpts{ParseMode: "markdown"})
 		return err
 	}
 
 	// Build keyboard with expense buttons
 	keyboard := make([][]gotgbot.InlineKeyboardButton, 0, len(expenses)+1)
 	for _, expense := range expenses {
-		buttonText := fmt.Sprintf("#%d: %s (%s)", expense.ID, expense.Name, expense.Amount)
 		keyboard = append(keyboard, []gotgbot.InlineKeyboardButton{
-			{Text: buttonText, CallbackData: fmt.Sprintf("splitbill.delete.%d", expense.ID)},
+			{Text: expenseButtonLabel(enum.EmojiDelete, expense), CallbackData: fmt.Sprintf("splitbill.delete.%d", expense.ID)},
 		})
 	}
 	keyboard = append(keyboard, []gotgbot.InlineKeyboardButton{
-		{Text: "<< Back", CallbackData: "splitbill.back"},
+		{Text: enum.EmojiBack + " Back", CallbackData: "splitbill.back"},
 	})
 
 	inlineKeyboard := gotgbot.InlineKeyboardMarkup{InlineKeyboard: keyboard}
 
-	_, err = ctx.EffectiveMessage.Reply(bot, "*Delete Expense*\n\nSelect an expense to delete:", &gotgbot.SendMessageOpts{
+	_, err = ctx.EffectiveMessage.Reply(bot, enum.EmojiDelete+" *Delete Expense*\n\nChoose the expense to delete:", &gotgbot.SendMessageOpts{
 		ParseMode:   "markdown",
 		ReplyMarkup: inlineKeyboard,
 	})
@@ -385,31 +371,31 @@ func HandleSelectExpenseForDelete(bot *gotgbot.Bot, ctx *ext.Context) error {
 
 	expense, err := handlers.GetExpenseById(expenseId)
 	if err != nil {
-		_, err := ctx.EffectiveMessage.Reply(bot, fmt.Sprintf("*Error*\n\n%s", err.Error()), &gotgbot.SendMessageOpts{ParseMode: "markdown"})
+		_, err := ctx.EffectiveMessage.Reply(bot, fmt.Sprintf("%s *Error*\n\n%s", enum.EmojiCross, err.Error()), &gotgbot.SendMessageOpts{ParseMode: "markdown"})
 		return err
 	}
 
 	// Show expense details with confirm/cancel buttons
-	message := fmt.Sprintf(`*Delete Expense #%d?*
+	message := fmt.Sprintf(`%s *Delete Expense #%d?*
 
-- *Name*: %s
-- *Amount*: %s
-- *Date*: %s
-- *Payer*: %s
+%s Name: %s
+%s Amount: %s
+%s Date: %s
+%s Payer: %s
 
-Are you sure you want to delete this expense?`,
-		expense.ID,
-		expense.Name,
-		expense.Amount,
-		expense.Date,
-		expense.Payer,
+Do you want to delete this expense?`,
+		enum.EmojiWarning, expense.ID,
+		enum.EmojiReceipt, expense.Name,
+		enum.EmojiMoney, expense.Amount,
+		enum.EmojiCalendar, expense.Date,
+		enum.EmojiUser, expense.Payer,
 	)
 
 	inlineKeyboard := gotgbot.InlineKeyboardMarkup{
 		InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
 			{
-				{Text: "Yes, Delete", CallbackData: fmt.Sprintf("splitbill.delete.confirm.%d", expenseId)},
-				{Text: "Cancel", CallbackData: "splitbill.delete.cancel"},
+				{Text: enum.EmojiCheck + " Yes, delete", CallbackData: fmt.Sprintf("splitbill.delete.confirm.%d", expenseId)},
+				{Text: enum.EmojiCross + " Cancel", CallbackData: "splitbill.delete.cancel"},
 			},
 		},
 	}
@@ -441,15 +427,11 @@ func HandleConfirmDelete(bot *gotgbot.Bot, ctx *ext.Context) error {
 	// Fetch the expense first to get name, amount, and existing note
 	expense, err := handlers.GetExpenseById(expenseId)
 	if err != nil {
-		_, err := ctx.EffectiveMessage.Reply(bot, fmt.Sprintf("*Error*\n\n%s", err.Error()), &gotgbot.SendMessageOpts{ParseMode: "markdown"})
+		_, err := ctx.EffectiveMessage.Reply(bot, fmt.Sprintf("%s *Error*\n\n%s", enum.EmojiCross, err.Error()), &gotgbot.SendMessageOpts{ParseMode: "markdown"})
 		return err
 	}
 
-	// Get username for audit log
-	username := "@" + ctx.EffectiveUser.Username
-	if ctx.EffectiveUser.Username == "" {
-		username = ctx.EffectiveUser.FirstName
-	}
+	username := displayUsername(ctx.EffectiveUser)
 
 	// Format amount with currency for audit log
 	formattedAmount := utilities.FormatMoney(cast.ToInt(expense.Amount))
@@ -457,11 +439,17 @@ func HandleConfirmDelete(bot *gotgbot.Bot, ctx *ext.Context) error {
 	// Soft delete the expense (keeps ID, appends deletion to audit log)
 	err = handlers.DeleteExpenseById(expenseId, expense.Name, formattedAmount, expense.Note, username)
 	if err != nil {
-		_, err := ctx.EffectiveMessage.Reply(bot, fmt.Sprintf("*Failed to Delete*\n\n%s", err.Error()), &gotgbot.SendMessageOpts{ParseMode: "markdown"})
+		_, err := ctx.EffectiveMessage.Reply(bot, fmt.Sprintf("%s *Expense Not Deleted*\n\n%s", enum.EmojiCross, err.Error()), &gotgbot.SendMessageOpts{ParseMode: "markdown"})
 		return err
 	}
 
-	_, err = ctx.EffectiveMessage.Reply(bot, fmt.Sprintf("*Expense #%d Deleted*\n\nThe expense has been removed.", expenseId), &gotgbot.SendMessageOpts{
+	_, err = ctx.EffectiveMessage.Reply(bot, fmt.Sprintf(
+		"%s *Expense #%d Deleted*\n\n%s %s (%s)\n%s By: %s\n%s At: %s",
+		enum.EmojiDelete, expenseId,
+		enum.EmojiReceipt, expense.Name, formattedAmount,
+		enum.EmojiUser, username,
+		enum.EmojiClock, utilities.GetCurrentDateTime(),
+	), &gotgbot.SendMessageOpts{
 		ParseMode: "markdown",
 	})
 	return err
@@ -470,7 +458,7 @@ func HandleConfirmDelete(bot *gotgbot.Bot, ctx *ext.Context) error {
 // HandleCancelDelete cancels the delete operation
 func HandleCancelDelete(bot *gotgbot.Bot, ctx *ext.Context) error {
 	logUserAction(ctx, "splitbill_delete_cancel", "delete cancelled")
-	_, err := ctx.EffectiveMessage.Reply(bot, "*Cancelled*\n\nDelete operation cancelled.", &gotgbot.SendMessageOpts{
+	_, err := ctx.EffectiveMessage.Reply(bot, enum.EmojiCross+" *Cancelled*\n\nThe expense is not deleted.", &gotgbot.SendMessageOpts{
 		ParseMode: "markdown",
 	})
 	return err

@@ -57,7 +57,7 @@ func StartRentConversation(bot *gotgbot.Bot, ctx *ext.Context) error {
 
 	_, err := ctx.EffectiveMessage.Reply(
 		bot,
-		"\U0001F3E0 *Add Rent*\n\nPlease enter the \U0001F4B0 *total rent bill* amount:",
+		enum.EmojiHouse+" *Add Rent* (step 1 of 3)\n\nSend the "+enum.EmojiMoney+" *total rent bill*.\nExample: 5.5m\n\nSend /cancel to stop.",
 		&gotgbot.SendMessageOpts{ParseMode: "markdown"},
 	)
 	if err != nil {
@@ -78,7 +78,7 @@ func HandleRentTotalInput(bot *gotgbot.Bot, ctx *ext.Context) error {
 	if amount == "" || !utilities.IsNumeric(amount) {
 		_, err := ctx.EffectiveMessage.Reply(
 			bot,
-			"*Invalid Amount*\n\nPlease enter a valid number for the total bill:",
+			enum.EmojiCross+" *Invalid Amount*\n\nSend a number for the total bill, for example 5.5m.",
 			&gotgbot.SendMessageOpts{ParseMode: "markdown"},
 		)
 		if err != nil {
@@ -97,7 +97,12 @@ func HandleRentTotalInput(bot *gotgbot.Bot, ctx *ext.Context) error {
 
 	_, err := ctx.EffectiveMessage.Reply(
 		bot,
-		fmt.Sprintf("\U0001F4B0 Total: *%s*\n\nNow enter the \u26a1 *electric* bill amount:", utilities.FormatMoney(int(rentData.TotalBill))),
+		fmt.Sprintf(
+			"%s *Add Rent* (step 2 of 3)\n\n%s Total: *%s*\n\nSend the %s *electric* bill.\nExample: 850k",
+			enum.EmojiHouse,
+			enum.EmojiMoney, utilities.FormatMoney(int(rentData.TotalBill)),
+			enum.EmojiElectric,
+		),
 		&gotgbot.SendMessageOpts{ParseMode: "markdown"},
 	)
 	if err != nil {
@@ -118,7 +123,7 @@ func HandleRentElectricInput(bot *gotgbot.Bot, ctx *ext.Context) error {
 	if amount == "" || !utilities.IsNumeric(amount) {
 		_, err := ctx.EffectiveMessage.Reply(
 			bot,
-			"*Invalid Amount*\n\nPlease enter a valid number for the electric bill:",
+			enum.EmojiCross+" *Invalid Amount*\n\nSend a number for the electric bill, for example 850k.",
 			&gotgbot.SendMessageOpts{ParseMode: "markdown"},
 		)
 		if err != nil {
@@ -138,7 +143,13 @@ func HandleRentElectricInput(bot *gotgbot.Bot, ctx *ext.Context) error {
 
 	_, err := ctx.EffectiveMessage.Reply(
 		bot,
-		fmt.Sprintf("\u26a1 Electric: *%s*\n\nNow enter the \U0001F4A7 *water* bill amount:", utilities.FormatMoney(int(rentData.Electric))),
+		fmt.Sprintf(
+			"%s *Add Rent* (step 3 of 3)\n\n%s Total: *%s*\n%s Electric: *%s*\n\nSend the %s *water* bill.\nExample: 120k",
+			enum.EmojiHouse,
+			enum.EmojiMoney, utilities.FormatMoney(int(rentData.TotalBill)),
+			enum.EmojiElectric, utilities.FormatMoney(int(rentData.Electric)),
+			enum.EmojiWater,
+		),
 		&gotgbot.SendMessageOpts{ParseMode: "markdown"},
 	)
 	if err != nil {
@@ -159,7 +170,7 @@ func HandleRentWaterInput(bot *gotgbot.Bot, ctx *ext.Context) error {
 	if amount == "" || !utilities.IsNumeric(amount) {
 		_, err := ctx.EffectiveMessage.Reply(
 			bot,
-			"*Invalid Amount*\n\nPlease enter a valid number for the water bill:",
+			enum.EmojiCross+" *Invalid Amount*\n\nSend a number for the water bill, for example 120k.",
 			&gotgbot.SendMessageOpts{ParseMode: "markdown"},
 		)
 		if err != nil {
@@ -186,7 +197,8 @@ func HandleRentWaterInput(bot *gotgbot.Bot, ctx *ext.Context) error {
 	if rentData.OtherFees < 0 {
 		_, err := ctx.EffectiveMessage.Reply(
 			bot,
-			fmt.Sprintf("*Validation Error*\n\nElectric (%s) + Water (%s) exceeds Total (%s).\n\nPlease start over with /rent",
+			fmt.Sprintf("%s *Invalid Amounts*\n\nElectric (%s) + water (%s) is more than the total (%s).\n\nStart again with /rent.",
+				enum.EmojiCross,
 				utilities.FormatMoney(int(rentData.Electric)),
 				utilities.FormatMoney(int(rentData.Water)),
 				utilities.FormatMoney(int(rentData.TotalBill)),
@@ -205,7 +217,7 @@ func HandleRentWaterInput(bot *gotgbot.Bot, ctx *ext.Context) error {
 	if err != nil {
 		_, err := ctx.EffectiveMessage.Reply(
 			bot,
-			fmt.Sprintf("*Failed to Save Rent*\n\n%s", err.Error()),
+			fmt.Sprintf("%s *Rent Not Saved*\n\n%s", enum.EmojiCross, err.Error()),
 			&gotgbot.SendMessageOpts{ParseMode: "markdown"},
 		)
 		clearRentData(ctx.EffectiveChat.Id)

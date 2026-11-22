@@ -9,6 +9,27 @@ func GetCurrentDate() string {
 	return time.Now().Format("02/01/2006")
 }
 
+// GetCurrentDateTime returns the current time in the same format as the audit notes.
+func GetCurrentDateTime() string {
+	return time.Now().Format("02/01/2006 15:04")
+}
+
+// DaysUntil returns the number of calendar days from today to dateStr (DD/MM/YYYY).
+// A negative value means the date is in the past.
+func DaysUntil(dateStr string) (int, error) {
+	loc, err := time.LoadLocation("Asia/Bangkok")
+	if err != nil {
+		return 0, err
+	}
+	t, err := time.ParseInLocation("02/01/2006", dateStr, loc)
+	if err != nil {
+		return 0, err
+	}
+	now := time.Now().In(loc)
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc)
+	return int(t.Sub(today).Hours() / 24), nil
+}
+
 // GetCurrentMonthSheetName returns the current month in YYYY_MM format for sheet naming
 func GetCurrentMonthSheetName() string {
 	return time.Now().Format("2006_01")

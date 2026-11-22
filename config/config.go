@@ -53,10 +53,8 @@ var (
 	appConfig         AppConfig
 )
 
-func init() {
-	Load()
-}
-
+// Load is not run from init() so packages that import config can be unit tested
+// without a config file. Call it once at startup.
 func Load() {
 	configReaderMode := os.Getenv("CONFIG_READER_MODE")
 

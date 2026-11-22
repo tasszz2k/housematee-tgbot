@@ -38,7 +38,7 @@ func GSheets(bot *gotgbot.Bot, ctx *ext.Context) error {
 	inlineKeyboard := gotgbot.InlineKeyboardMarkup{
 		InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
 			{
-				{Text: "Create New Sheet", CallbackData: GSheetsCreateCommand},
+				{Text: enum.EmojiNew + " Create New Sheet", CallbackData: GSheetsCreateCommand},
 			},
 		},
 	}
@@ -47,10 +47,11 @@ func GSheets(bot *gotgbot.Bot, ctx *ext.Context) error {
 	_, err = ctx.EffectiveMessage.Reply(
 		bot,
 		fmt.Sprintf(
-			"*Google Sheets Management*\n\n"+
-				"*Current Sheet:* `%s`\n\n"+
-				"Select an action:",
-			currentSheet,
+			"%s *Google Sheets*\n\n"+
+				"%s Current sheet: `%s`\n\n"+
+				"Choose an action:",
+			enum.EmojiSheet,
+			enum.EmojiPage, currentSheet,
 		),
 		&gotgbot.SendMessageOpts{
 			ReplyMarkup: inlineKeyboard,
@@ -97,11 +98,7 @@ func HandleGSheetsActionCallback(bot *gotgbot.Bot, ctx *ext.Context) error {
 	}
 
 	// Send a response to acknowledge the button click
-	_, err := cb.Answer(
-		bot, &gotgbot.AnswerCallbackQueryOpts{
-			Text: fmt.Sprintf("Processing %s", cb.Data),
-		},
-	)
+	_, err := cb.Answer(bot, &gotgbot.AnswerCallbackQueryOpts{})
 	if err != nil {
 		return fmt.Errorf("failed to answer callback query: %w", err)
 	}
@@ -118,8 +115,8 @@ func handleGSheetsCreateAction(bot *gotgbot.Bot, ctx *ext.Context) error {
 	inlineKeyboard := gotgbot.InlineKeyboardMarkup{
 		InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
 			{
-				{Text: "Confirm", CallbackData: GSheetsConfirmCreateCommand},
-				{Text: "Cancel", CallbackData: GSheetsCancelCreateCommand},
+				{Text: enum.EmojiCheck + " Confirm", CallbackData: GSheetsConfirmCreateCommand},
+				{Text: enum.EmojiCross + " Cancel", CallbackData: GSheetsCancelCreateCommand},
 			},
 		},
 	}
@@ -128,11 +125,12 @@ func handleGSheetsCreateAction(bot *gotgbot.Bot, ctx *ext.Context) error {
 	_, err := ctx.EffectiveMessage.Reply(
 		bot,
 		fmt.Sprintf(
-			"*Create New Sheet*\n\n"+
-				"A new sheet will be created by copying the Template.\n\n"+
-				"*Sheet Name:* `%s`\n\n"+
-				"Do you want to proceed?",
-			newSheetName,
+			"%s *Create New Sheet*\n\n"+
+				"The bot copies the Template sheet and makes the copy the current sheet.\n\n"+
+				"%s Sheet name: `%s`\n\n"+
+				"Do you want to continue?",
+			enum.EmojiNew,
+			enum.EmojiPage, newSheetName,
 		),
 		&gotgbot.SendMessageOpts{
 			ReplyMarkup: inlineKeyboard,
@@ -158,7 +156,7 @@ func handleGSheetsConfirmCreateAction(bot *gotgbot.Bot, ctx *ext.Context) error 
 		// Send error message to user (use HTML to avoid markdown parsing issues with special chars)
 		_, sendErr := ctx.EffectiveMessage.Reply(
 			bot,
-			fmt.Sprintf("<b>Status:</b> Failed\n\n<b>Error:</b> %s", escapeHTML(err.Error())),
+			fmt.Sprintf("%s <b>Sheet Not Created</b>\n\n%s", enum.EmojiCross, escapeHTML(err.Error())),
 			&gotgbot.SendMessageOpts{
 				ParseMode: "HTML",
 			},
@@ -173,12 +171,13 @@ func handleGSheetsConfirmCreateAction(bot *gotgbot.Bot, ctx *ext.Context) error 
 	_, err = ctx.EffectiveMessage.Reply(
 		bot,
 		fmt.Sprintf(
-			"*Status:* Success\n\n"+
-				"---\n"+
-				"*Sheet Name:* `%s`\n"+
-				"*Sheet ID:* `%d`",
-			sheetInfo.SheetName,
-			sheetInfo.SheetId,
+			"%s *Sheet Created*\n\n"+
+				"%s Name: `%s`\n"+
+				"%s ID: `%d`\n\n"+
+				"New expenses and rent now go to this sheet.",
+			enum.EmojiCheck,
+			enum.EmojiPage, sheetInfo.SheetName,
+			enum.EmojiID, sheetInfo.SheetId,
 		),
 		&gotgbot.SendMessageOpts{
 			ParseMode: "markdown",
@@ -194,7 +193,7 @@ func handleGSheetsConfirmCreateAction(bot *gotgbot.Bot, ctx *ext.Context) error 
 func handleGSheetsCancelCreateAction(bot *gotgbot.Bot, ctx *ext.Context) error {
 	_, err := ctx.EffectiveMessage.Reply(
 		bot,
-		"Sheet creation cancelled.",
+		enum.EmojiCross+" *Cancelled*\n\nNo sheet is created.",
 		&gotgbot.SendMessageOpts{
 			ParseMode: "markdown",
 		},
