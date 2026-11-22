@@ -1,0 +1,29 @@
+# fly.toml app configuration file generated for housematee-tgbot on 2023-09-09T21:31:06+07:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = "housematee-tgbot"
+primary_region = "sin"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  CONFIG_READER_MODE = "secret"
+  TZ="Asia/Ho_Chi_Minh"
+#  PORT = "8080"
+
+[http_service]
+#  internal_port = 8080
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+[deploy]
+  strategy = "immediate"
+
+[scale]
+  count = 1

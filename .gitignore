@@ -64,3 +64,6 @@ config/local.yaml
 config/prod.yaml
 config/housematee-*.json
 .local/
+# build outputs
+/main
+/housematee-tgbot
